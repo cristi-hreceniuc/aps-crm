@@ -26,9 +26,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class User implements UserDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(nullable = false)
-    private UUID id;
+    @Builder.Default
+    private String id = UUID.randomUUID().toString();
 
     @Column(nullable = false)
     private String firstName;
@@ -54,14 +54,14 @@ public class User implements UserDetails {
     private String gender;
 
     @Enumerated(EnumType.STRING)
-    private UserRole role;
+    private UserRole userRole;
 
     @Enumerated(EnumType.STRING)
-    private UserStatus status;
+    private UserStatus userStatus;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.toString()));
+        return List.of(new SimpleGrantedAuthority(userRole.toString()));
     }
 
     @Override

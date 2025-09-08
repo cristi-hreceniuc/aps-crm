@@ -12,6 +12,8 @@ import rotld.apscrm.api.v1.user.dto.UserStatus;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -27,8 +29,8 @@ public class AuthenticationService {
                 .gender(input.gender())
                 .email(input.email())
                 .password(passwordEncoder.encode(input.password()))
-                .role(UserRole.USER)
-                .status(UserStatus.PENDING)
+                .userRole(UserRole.USER)
+                .userStatus(UserStatus.PENDING)
                 .build();
 
         return userRepository.save(user);

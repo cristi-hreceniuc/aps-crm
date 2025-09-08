@@ -18,8 +18,8 @@ public class UserMapper {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .gender(user.getGender())
-                .role(user.getRole())
-                .status(user.getStatus())
+                .role(user.getUserRole())
+                .status(user.getUserStatus())
                 .build();
     }
 }

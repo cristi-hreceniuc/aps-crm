@@ -7,7 +7,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -106,11 +105,11 @@ public class GlobalExceptionHandler {
         return createProblemDetail(HttpStatus.CONFLICT, "Data integrity violation.", ex, request); // 409 Conflict is often more appropriate
     }
 
-    @ExceptionHandler
-    public ProblemDetail handlePSQLException(PSQLException ex, HttpServletRequest request) {
-        // You can add logic here to check ex.getSQLState() for specific PostgreSQL errors
-        return createProblemDetail(HttpStatus.BAD_REQUEST, "Database error.", ex, request);
-    }
+//    @ExceptionHandler
+//    public ProblemDetail handlePSQLException(PSQLException ex, HttpServletRequest request) {
+//        // You can add logic here to check ex.getSQLState() for specific PostgreSQL errors
+//        return createProblemDetail(HttpStatus.BAD_REQUEST, "Database error.", ex, request);
+//    }
 
     @ExceptionHandler
     public ProblemDetail handleMissingServletRequestParameterException(MissingServletRequestParameterException ex, HttpServletRequest request) {
