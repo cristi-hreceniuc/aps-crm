@@ -22,7 +22,7 @@ public class Volunteer {
     private String postType;
     @Column(name = "guid")
     private String link;
-    @OneToMany(mappedBy = "volunteer")
+    @OneToMany(mappedBy = "volunteer", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @ToString.Exclude
     private List<VolunteerMeta> meta = new ArrayList<>();
 }

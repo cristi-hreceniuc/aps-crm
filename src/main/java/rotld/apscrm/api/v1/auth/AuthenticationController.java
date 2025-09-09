@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import rotld.apscrm.api.v1.user.dto.LoginResponse;
 import rotld.apscrm.api.v1.user.dto.LoginUserDto;
 import rotld.apscrm.api.v1.user.dto.RegisterUserDto;
+import rotld.apscrm.api.v1.user.dto.UserProfileDto;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.services.AuthenticationService;
 import rotld.apscrm.services.JwtService;
@@ -33,6 +34,7 @@ public class AuthenticationController {
         return LoginResponse.builder()
                 .token(jwtToken)
                 .expiresIn(jwtService.getExpirationTime())
+                .user(new UserProfileDto(authenticatedUser.getFirstName() + " " + authenticatedUser.getLastName(), authenticatedUser.getEmail()))
                 .build();
     }
 }

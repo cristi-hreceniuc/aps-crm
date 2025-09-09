@@ -210,4 +210,98 @@ public class VolunteerQueryService {
 
         return new PageImpl<>(content, pageable, total);
     }
+
+    public Page<Volunteer> search(String q, Pageable pageable){
+        var cb = em.getCriteriaBuilder();
+
+        var cq = cb.createQuery(Volunteer.class);
+        var v  = cq.from(Volunteer.class);
+
+        // JOIN-uri doar pe câmpurile în care căutăm
+        var jLast  = v.join("meta", JoinType.LEFT);  jLast.on(cb.equal(jLast.get("metaKey"),  "_vol_nume"));
+        var jFirst = v.join("meta", JoinType.LEFT);  jFirst.on(cb.equal(jFirst.get("metaKey"), "_vol_prenume"));
+        var jEmail = v.join("meta", JoinType.LEFT);  jEmail.on(cb.equal(jEmail.get("metaKey"), "_vol_email"));
+        var jPhone = v.join("meta", JoinType.LEFT);  jPhone.on(cb.equal(jPhone.get("metaKey"), "_vol_telefon"));
+        var jOcc   = v.join("meta", JoinType.LEFT);  jOcc.on(cb.equal(jOcc.get("metaKey"),   "_vol_ocupatie"));
+        var jDom   = v.join("meta", JoinType.LEFT);  jDom.on(cb.equal(jDom.get("metaKey"),   "_vol_domeniu"));
+
+        cq.where(cb.equal(v.get("postType"), "aps_volunteer"));
+
+        String like = "%" + q.toLowerCase().trim() + "%";
+
+        // câmpuri: nume (nume + prenume), ID, titlu (post_title), email, telefon, ocupație, domeniu
+        var pOr = cb.or(
+                cb.like(cb.lower(cb.concat(cb.coalesce(jLast.get("metaValue"), cb.literal("")),
+                        cb.concat(cb.literal(" "), cb.coalesce(jFirst.get("metaValue"), cb.literal(""))))), like),
+                cb.like(v.get("id").as(String.class), "%" + q.trim() + "%"),
+                cb.like(cb.lower(cb.coalesce(v.get("postTitle"), cb.literal(""))), like),
+                cb.like(cb.lower(cb.coalesce(jEmail.get("metaValue"), cb.literal(""))), like),
+                cb.like(cb.lower(cb.coalesce(jPhone.get("metaValue"), cb.literal(""))), like),
+                cb.like(cb.lower(cb.coalesce(jOcc.get("metaValue"),   cb.literal(""))), like),
+                cb.like(cb.lower(cb.coalesce(jDom.get("metaValue"),   cb.literal(""))), like)
+        );
+
+        cq.where(cb.and(cb.equal(v.get("postType"), "aps_volunteer"), pOr));
+
+        // ORDER BY – respectăm pageable.getSort() (folosim metoda ta existentă "criteriaWithLazyJoins" logic)
+        // pentru simplitate aici sortăm după ce vine în pageable (id/postName/date etc.)
+        List<jakarta.persistence.criteria.Order> orders = new ArrayList<>();
+        if (pageable.getSort().isSorted()){
+            pageable.getSort().forEach(o -> {
+                boolean asc = o.isAscending();
+                switch (o.getProperty()){
+                    case "id"       -> orders.add(asc ? cb.asc(v.get("id")) : cb.desc(v.get("id")));
+                    case "postName" -> orders.add(asc ? cb.asc(cb.lower(v.get("postTitle"))) : cb.desc(cb.lower(v.get("postTitle"))));
+                    case "name"     -> {
+                        var lname = cb.lower(cb.coalesce(jLast.get("metaValue"), cb.literal("")));
+                        var fname = cb.lower(cb.coalesce(jFirst.get("metaValue"), cb.literal("")));
+                        orders.add(asc ? cb.asc(lname) : cb.desc(lname));
+                        orders.add(asc ? cb.asc(fname) : cb.desc(fname));
+                    }
+                    case "email"    -> orders.add(asc ? cb.asc(cb.lower(jEmail.get("metaValue"))) : cb.desc(cb.lower(jEmail.get("metaValue"))));
+                    case "domain"   -> orders.add(asc ? cb.asc(cb.lower(jDom.get("metaValue")))   : cb.desc(cb.lower(jDom.get("metaValue"))));
+                    case "ocupation"-> orders.add(asc ? cb.asc(cb.lower(jOcc.get("metaValue")))   : cb.desc(cb.lower(jOcc.get("metaValue"))));
+                    default         -> orders.add(asc ? cb.asc(v.get("id")) : cb.desc(v.get("id")));
+                }
+            });
+        } else {
+            orders.add(cb.desc(v.get("id")));
+        }
+        cq.orderBy(orders);
+
+        var query = em.createQuery(cq);
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+        var content = query.getResultList();
+
+        // COUNT (fără join-uri grele — repetăm doar WHERE de bază + OR-ul cu like)
+        var cc = cb.createQuery(Long.class);
+        var v2 = cc.from(Volunteer.class);
+
+        var jL  = v2.join("meta", JoinType.LEFT);  jL.on(cb.equal(jL.get("metaKey"),  "_vol_nume"));
+        var jF  = v2.join("meta", JoinType.LEFT);  jF.on(cb.equal(jF.get("metaKey"),  "_vol_prenume"));
+        var jE  = v2.join("meta", JoinType.LEFT);  jE.on(cb.equal(jE.get("metaKey"),  "_vol_email"));
+        var jP  = v2.join("meta", JoinType.LEFT);  jP.on(cb.equal(jP.get("metaKey"),  "_vol_telefon"));
+        var jO  = v2.join("meta", JoinType.LEFT);  jO.on(cb.equal(jO.get("metaKey"),  "_vol_ocupatie"));
+        var jD  = v2.join("meta", JoinType.LEFT);  jD.on(cb.equal(jD.get("metaKey"),  "_vol_domeniu"));
+
+        String like2 = like;
+        var pOr2 = cb.or(
+                cb.like(cb.lower(cb.concat(cb.coalesce(jL.get("metaValue"), cb.literal("")),
+                        cb.concat(cb.literal(" "), cb.coalesce(jF.get("metaValue"), cb.literal(""))))), like2),
+                cb.like(v2.get("id").as(String.class), "%" + q.trim() + "%"),
+                cb.like(cb.lower(cb.coalesce(v2.get("postTitle"), cb.literal(""))), like2),
+                cb.like(cb.lower(cb.coalesce(jE.get("metaValue"), cb.literal(""))), like2),
+                cb.like(cb.lower(cb.coalesce(jP.get("metaValue"), cb.literal(""))), like2),
+                cb.like(cb.lower(cb.coalesce(jO.get("metaValue"), cb.literal(""))), like2),
+                cb.like(cb.lower(cb.coalesce(jD.get("metaValue"), cb.literal(""))), like2)
+        );
+
+        cc.select(cb.count(v2));
+        cc.where(cb.and(cb.equal(v2.get("postType"), "aps_volunteer"), pOr2));
+
+        long total = em.createQuery(cc).getSingleResult();
+        return new PageImpl<>(content, pageable, total);
+    }
+
 }

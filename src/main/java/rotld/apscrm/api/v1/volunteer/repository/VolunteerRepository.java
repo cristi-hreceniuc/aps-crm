@@ -5,8 +5,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, JpaSpecificationExecutor<Volunteer> {
@@ -45,4 +48,14 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, 
     """
     )
     Page<Volunteer> findAllOrderByAgeDesc(Pageable pageable);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM VolunteerMeta vm WHERE vm.volunteer.id = :postId")
+    int deleteAllByVolunteerId(@Param("postId") Integer postId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Volunteer v WHERE v.id = :id")
+    int hardDeleteById(Integer id);
 }
