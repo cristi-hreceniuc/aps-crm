@@ -20,7 +20,7 @@ public class AuthenticationController {
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
 
-    @PostMapping("/signup")
+    @PostMapping("/register")
     public User register(@RequestBody RegisterUserDto registerUserDto) {
         return authenticationService.signup(registerUserDto);
     }
