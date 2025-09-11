@@ -8,10 +8,12 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface D177SettingsRepository extends JpaRepository<D177Settings, Integer> {
     List<D177Settings> findByPostIdIn(Collection<Integer> ids);
+    Optional<D177Settings> findByPostId(Integer id);
 
     @Modifying
     @Query(value = """
