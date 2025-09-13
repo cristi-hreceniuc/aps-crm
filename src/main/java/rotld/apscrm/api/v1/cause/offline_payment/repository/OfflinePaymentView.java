@@ -1,5 +1,6 @@
 package rotld.apscrm.api.v1.cause.offline_payment.repository;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Immutable;
@@ -22,7 +23,13 @@ import java.time.format.DateTimeFormatter;
     o.cause_id AS cause_id,
     p.post_title AS cause_title,
     o.booking_date AS booking_date,
-    o.order_status AS order_status,
+    CASE order_status
+              WHEN 'pending' THEN 'În așteptare'
+              WHEN 'approved' THEN 'Aprobat'
+              WHEN 'rejected' THEN 'Respins'
+              WHEN 'online-paid' THEN 'Plătit online'
+              ELSE order_status
+            END AS order_status,
     o.donation_amount AS amount,
     NULLIF(CAST(o.payment_date AS CHAR), '0000-00-00 00:00:00') AS payment_date,    
     COALESCE(
@@ -47,4 +54,17 @@ public class OfflinePaymentView {
     @Column(name="amount") private Double amount;
     @Column(name="payment_method") private String paymentMethod;
     @Column(name="payment_date") private LocalDateTime paymentDate;
+
+    @JsonProperty("order_status")
+    public String getOrderStatus() {
+        if (orderStatus == null) return "";
+        switch (orderStatus.toLowerCase()) {
+            case "pending": return "În așteptare";
+            case "approved": return "Aprobat";
+            case "rejected": return "Respins";
+            case "online-paid": return "Plătit online";
+            case "offline": return "Plată offline";
+            default: return orderStatus;
+        }
+    }
 }
