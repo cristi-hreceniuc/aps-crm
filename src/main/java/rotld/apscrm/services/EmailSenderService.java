@@ -17,6 +17,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 
 @Service
@@ -52,13 +53,13 @@ public class EmailSenderService {
         log.info("Successfully sent mail with attachment to <{}>.", sendTo);
     }
 
-    public void sendEmail(String sendTo, String subject, String setMessage) throws MessagingException {
-
+    public void sendEmail(String sendTo, String subject, String setMessage) throws MessagingException, UnsupportedEncodingException {
         MimeMessage msg = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(msg, true);
+        MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
+
         String emailContent = setMessage;
 
-        helper.setFrom(EMAIL);
+        helper.setFrom("ostafie.ionut@gmail.com", "Acțiune pentru Sănătate");
         helper.setTo(sendTo);
         helper.setSubject(subject);
         helper.setText(emailContent, true);
@@ -66,6 +67,7 @@ public class EmailSenderService {
         embedCidImagesIfPresent(emailContent, helper);
 
         javaMailSender.send(msg);
+
         log.info("Successfully sent mail to <{}>.", sendTo);
     }
 

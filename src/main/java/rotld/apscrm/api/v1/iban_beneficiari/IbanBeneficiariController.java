@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rotld.apscrm.api.v1.iban_beneficiari.dto.IbanBeneficiariResponseDto;
-import rotld.apscrm.api.v1.iban_beneficiari.dto.UpdateIbanRequestDto;
 import rotld.apscrm.api.v1.iban_beneficiari.service.IbanBeneficiariService;
 
 import java.util.Map;
@@ -44,5 +43,18 @@ public class IbanBeneficiariController {
     public ResponseEntity<Void> delete(@PathVariable Integer id){
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping
+    public ResponseEntity<IbanBeneficiariResponseDto> create(@RequestBody Map<String, String> body) {
+        String name = body.get("name");
+        String iban = body.get("iban");
+
+        if (name == null || name.isBlank() || iban == null || iban.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        IbanBeneficiariResponseDto saved = service.create(name, iban);
+        return ResponseEntity.ok(saved);
     }
 }

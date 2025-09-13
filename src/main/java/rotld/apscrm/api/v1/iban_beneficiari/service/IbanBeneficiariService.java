@@ -7,14 +7,13 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import rotld.apscrm.api.v1.d177.repository.D177Settings;
 import rotld.apscrm.api.v1.iban_beneficiari.dto.IbanBeneficiariResponseDto;
-import rotld.apscrm.api.v1.iban_beneficiari.dto.UpdateIbanRequestDto;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiari;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiariViewRepository;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiariWriteRepository;
 import rotld.apscrm.api.v1.volunteer.repository.VolunteerMeta;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,6 +81,28 @@ public class IbanBeneficiariService {
         writeRepo.deleteMeta(postId);
         int affected = writeRepo.deletePost(postId);
         if (affected == 0) throw new IllegalArgumentException("Iban beneficiar  not found: " + postId);
+    }
 
+    @Transactional
+    public IbanBeneficiariResponseDto create(String name, String iban) {
+        // inserează post
+        writeRepo.insertIbanPost();
+        Integer newId = writeRepo.getLastInsertId();
+
+        // inserează meta (nume + iban)
+        if (name != null && !name.isBlank()) {
+            writeRepo.insertMeta(newId, "nume", name);
+        }
+        if (iban != null && !iban.isBlank()) {
+            writeRepo.insertMeta(newId, "iban", iban);
+        }
+
+        // returnăm DTO
+        return IbanBeneficiariResponseDto.builder()
+                .id(newId)
+                .name(name)
+                .iban(iban)
+                .addedAt(java.time.LocalDateTime.now().toString())
+                .build();
     }
 }

@@ -12,6 +12,8 @@ import rotld.apscrm.api.v1.user.dto.RegisterUserDto;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.services.EmailSenderService;
 
+import java.io.UnsupportedEncodingException;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/mail")
@@ -21,7 +23,7 @@ public class MailController {
     private final EmailSenderService emailSenderService;
 
     @PostMapping
-    public void register(@RequestBody EmailRequestDto emailRequestDto) throws MessagingException {
+    public void register(@RequestBody EmailRequestDto emailRequestDto) throws MessagingException, UnsupportedEncodingException {
         emailSenderService.sendEmail(
                 emailRequestDto.sendTo(),
                 emailRequestDto.subject(),
