@@ -7,8 +7,11 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rotld.apscrm.api.v1.volunteer.dto.VolunteerResponseDto;
+import rotld.apscrm.api.v1.volunteer.mapper.VolunteerMapper;
 import rotld.apscrm.api.v1.volunteer.repository.Volunteer;
 import rotld.apscrm.api.v1.volunteer.repository.VolunteerRepository;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,5 +30,13 @@ public class VolunteerService {
         if (affected == 0){
             throw new IllegalArgumentException("Volunteer not found: " + id);
         }
+    }
+
+    public List<VolunteerResponseDto> getAll() {
+        List<Volunteer> all = volunteerRepository.findAll();
+        return all
+                .stream()
+                .map(VolunteerMapper::toResponseDto)
+                .toList();
     }
 }

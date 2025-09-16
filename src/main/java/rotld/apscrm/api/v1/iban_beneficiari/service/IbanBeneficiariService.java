@@ -105,4 +105,20 @@ public class IbanBeneficiariService {
                 .addedAt(java.time.LocalDateTime.now().toString())
                 .build();
     }
+
+    public List<IbanBeneficiariResponseDto> findAll() {
+        return viewRepo.findAll()
+                .stream().map(
+                        v -> {
+                            return IbanBeneficiariResponseDto.builder()
+                                    .id(v.getId())
+                                    .name(v.getName())
+                                    .iban(v.getIban())
+                                    .addedAt(v.getPostDateIso())
+                                    .build();
+                        }
+                )
+                .toList();
+
+    }
 }

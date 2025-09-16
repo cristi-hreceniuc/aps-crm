@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Subselect;
-
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Entity
 @Immutable
@@ -15,21 +14,21 @@ import org.hibernate.annotations.Subselect;
     DATE_FORMAT(s.post_date, '%Y-%m-%dT%H:%i:%s')          AS post_date_iso,
     s.post_title                                           AS title,
 
-    -- metas
     anul.meta_value                 AS year,
     nume.meta_value                 AS first_name,
     prenume.meta_value              AS last_name,
     email.meta_value                AS email,
     telefon.meta_value              AS phone,
     iban.meta_value                 AS iban,
-    dist2.meta_value                AS distrib2,          -- '1' dacă e 2 ani
-    acord.meta_value                AS acord_email,       -- '1'/'0'
+    dist2.meta_value                AS distrib2,
+    acord.meta_value                AS acord_email,
     pdf_url.meta_value              AS pdf_url,
 
-    -- link fallback (admin)
-    CONCAT('http://actiunepentrusanatate.ro', '/wp-admin/post.php?post=', s.ID, '&action=edit') AS admin_edit,
+    s.nr_borderou                   AS nr_borderou,    -- << NEW
+    cnp.meta_value                  AS cnp,            -- << NEW (dacă ai cheia; altfel rămâne null)
 
-    -- flags persistente
+    CONCAT('http://actiunepentrusanatate.ro','/wp-admin/post.php?post=', s.ID, '&action=edit') AS admin_edit,
+
     COALESCE(ps.is_downloaded, 0) AS downloaded,
     COALESCE(ps.is_verified,   0) AS verified,
     COALESCE(ps.is_corrupt,    0) AS corrupt
@@ -44,15 +43,13 @@ import org.hibernate.annotations.Subselect;
   LEFT JOIN wordpress.wp_postmeta dist2    ON dist2.post_id   = s.ID AND dist2.meta_key    = 'distribuire2ani'
   LEFT JOIN wordpress.wp_postmeta acord    ON acord.post_id   = s.ID AND acord.meta_key    = 'acordComunicare'
   LEFT JOIN wordpress.wp_postmeta pdf_url  ON pdf_url.post_id = s.ID AND pdf_url.meta_key  = '_pdf_url'
+  LEFT JOIN wordpress.wp_postmeta cnp      ON cnp.post_id     = s.ID AND cnp.meta_key      = 'cnp'
 
   LEFT JOIN wordpress.wp_posts_settings ps ON ps.post_id = s.ID
-
-  WHERE s.post_type   = 'formular230'
-    AND s.post_status = 'publish'
+  WHERE s.post_type='formular230' AND s.post_status='publish'
 """)
 public class F230 {
     @Id @Column(name="id") private Integer id;
-
     @Column(name="post_date_iso") private String postDateIso;
     @Column(name="title")         private String title;
 
@@ -66,8 +63,10 @@ public class F230 {
     @Column(name="acord_email")   private String acordEmail;
     @Column(name="pdf_url")       private String pdfUrl;
 
-    @Column(name="admin_edit")    private String adminEdit;
+    @Column(name="nr_borderou")   private Long nrBorderou;   // << NEW
+    @Column(name="cnp")           private String cnp;        // << NEW
 
+    @Column(name="admin_edit")    private String adminEdit;
     @Column(name="downloaded")    private Boolean downloaded;
     @Column(name="verified")      private Boolean verified;
     @Column(name="corrupt")       private Boolean corrupt;

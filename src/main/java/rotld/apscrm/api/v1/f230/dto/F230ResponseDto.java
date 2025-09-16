@@ -13,12 +13,11 @@ public class F230ResponseDto {
     private String  iban;
     private String  beneficiary;        // nume + prenume
     private String  emailContrib;       // email
-    private Boolean acordEmail;         // acordComunicare
     private String  nrBorderou;         // gol
     private Boolean downloaded;
     private Boolean verified;
     private Boolean corrupt;
-    private Boolean acordDate;          // acordComunicare (acord date ident.)
+    private String acordDate;          // acordComunicare (acord date ident.)
     private String  pdfUrl;             // download pdf
     private String  detail;             // admin edit
 }

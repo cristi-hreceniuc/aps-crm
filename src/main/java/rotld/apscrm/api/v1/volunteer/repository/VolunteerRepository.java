@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Repository
 public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, JpaSpecificationExecutor<Volunteer> {
 
@@ -58,4 +60,7 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, 
     @Transactional
     @Query("DELETE FROM Volunteer v WHERE v.id = :id")
     int hardDeleteById(Integer id);
+
+    @Query("SELECT v FROM Volunteer v WHERE v.postType = 'aps_volunteer'")
+    List<Volunteer> findAll();
 }
