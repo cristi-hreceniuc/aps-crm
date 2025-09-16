@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import rotld.apscrm.api.v1.d177.repository.D177Settings;
 import rotld.apscrm.api.v1.d177.repository.D177SettingsRepository;
 import rotld.apscrm.api.v1.sponsorizare.dto.SponsorizareResponseDto;
@@ -126,5 +127,12 @@ public class SponsorizareService {
                 .verified(Boolean.TRUE.equals(ps != null ? ps.getVerified()   : r.getVerified()))
                 .corrupt(Boolean.TRUE.equals(ps != null ? ps.getCorrupt()     : r.getCorrupt()))
                 .build();
+    }
+
+    @Transactional
+    public void delete(Integer id){
+        repo.deleteMeta(id);
+        int affected = repo.deletePost(id);
+        if (affected == 0) throw new IllegalArgumentException("D177 record not found: " + id);
     }
 }

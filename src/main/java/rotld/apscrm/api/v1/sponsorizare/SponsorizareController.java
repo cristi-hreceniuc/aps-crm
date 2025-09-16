@@ -43,4 +43,10 @@ public class SponsorizareController {
         settingsRepo.upsertFlags(id, downloaded, verified, corrupt);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id){
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

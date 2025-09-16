@@ -7,4 +7,8 @@ import java.util.*;
 public interface CrmSettingRepository extends JpaRepository<CrmSetting, Integer> {
     Optional<CrmSetting> findByName(String name);
     List<CrmSetting> findByNameIn(Collection<String> names);
+
+    List<CrmSetting> findAllByOrderByNameAsc();
+
+    List<CrmSetting> findByNameInOrderByNameAsc(List<String> xmlKeys);
 }
