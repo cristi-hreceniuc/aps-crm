@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Mulți Ani! - Asociația Acțiune pentru Sănătate</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .email-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #81C784);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        .content {
+            padding: 35px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .birthday-message {
+            background: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 25px 0;
+            transition: background-color 0.3s;
+        }
+        .cta-button:hover {
+            background: #45a049;
+            color: white;
+            text-decoration: none;
+        }
+        .impact-box {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .impact-box h3 {
+            color: #4CAF50;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 25px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .social-links {
+            margin: 15px 0;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .content { padding: 25px; }
+            .header { padding: 30px 15px; }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="header">
+        <h1>🎂 La Mulți Ani!</h1>
+        <p>Cu sincere urări de la Asociația Acțiune pentru Sănătate</p>
+    </div>
+
+    <div class="content">
+        <div class="greeting">
+            Dragă {{user_name}},
+        </div>
+
+        <p>Astăzi sărbătorim împreună ziua dumneavoastră de naștere și dorim să vă transmitem cele mai calde urări de <strong>La Mulți Ani</strong>!</p>
+
+        <div class="birthday-message">
+            <p><strong>Vă dorim:</strong></p>
+            <p>✨ Multă sănătate și bucurii în noul an de viață<br>
+                ✨ Realizări frumoase și momente de împlinire<br>
+                ✨ Căldura celor dragi și zâmbete sincere<br>
+                ✨ Un an plin de oportunități și experiențe valoroase</p>
+        </div>
+
+        <p>Zilele de naștere sunt momente speciale când reflectăm la drumul parcurs și ne gândim la viitor. Sunt, de asemenea, ocazii frumoase pentru a face gesturi care contează.</p>
+
+        <div class="impact-box">
+            <h3>🌟 O invitație specială de ziua dumneavoastră</h3>
+            <p>Dacă doriți să transformați această zi într-un moment și mai special, vă invităm să susțineți o cauză importantă pentru comunitate. Uneori, gesturile simple pot avea un impact mare în viețile altora.</p>
+        </div>
+
+        <p>Munca noastră în domeniul sănătății publice continuă să facă diferența în comunitate prin programe de prevenție, educație și suport pentru cei aflați în nevoie.</p>
+
+        <div style="text-align: center;">
+            <a href="https://actiunepentrusanatate.ro/cauze_asociatie/" class="cta-button">
+                Susține o cauză importantă
+            </a>
+        </div>
+
+        <p>Gestul dumneavoastră poate contribui la continuarea programelor noastre de sănătate comunitară și la ajutorarea celor care au nevoie de sprijin.</p>
+
+        <p>Indiferent de decizia pe care o veți lua, vă mulțumim pentru că ați fost alături de noi și pentru că faceți parte din comunitatea noastră.</p>
+
+        <p>Vă dorim din nou <strong>La Mulți Ani</strong> și sperăm că acest nou an de viață vă va aduce toate bucuriile pe care vi le doriți!</p>
+
+        <p>Cu respect și cele mai bune urări,<br>
+            <strong>Echipa Asociației Acțiune pentru Sănătate</strong></p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Asociația Acțiune pentru Sănătate</strong></p>
+        <p>📧 actiunepentrusanatate@gmail.com | 📞 +40 755 888 340</p>
+        <p>🌐 <a href="{{website_url}}">www.actiunepentrusanatate.ro</a></p>
+
+        <div class="social-links">
+            <a href="{{facebook_url}}">Facebook</a> |
+            <a href="{{instagram_url}}">Instagram</a> |
+            <a href="{{linkedin_url}}">LinkedIn</a>
+        </div>
+
+        <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
+            Acest email a fost trimis către {{user_email}} cu ocazia zilei dumneavoastră de naștere.<br>
+            <a href="{{unsubscribe_url}}">Dezabonare</a> | <a href="https://actiunepentrusanatate.ro/politica-de-confidentialitate/">Politica de confidențialitate</a>
+    </div>
+</div>
+</div>
+</body>
+</html>

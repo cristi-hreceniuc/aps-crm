@@ -122,6 +122,10 @@ public class F230Service {
                 .build();
     }
 
+    public List<F230> getAll() {
+        return repo.findAll(Pageable.ofSize(9999)).getContent();
+    }
+
     @Transactional
     public void delete(Integer id) {
         repo.deleteMeta(id);

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reînnoire Formularul 230 - Asociația Acțiune pentru Sănătate</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .email-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .highlight-box {
+            background: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .cta-button:hover {
+            background: #45a049;
+            color: white;
+            text-decoration: none;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .stats h3 {
+            color: #4CAF50;
+            margin: 0 0 10px 0;
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .social-links {
+            margin: 15px 0;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .content { padding: 20px; }
+            .header { padding: 20px 15px; }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="header">
+        <h1>🌟 Să continuăm faptele bune împreună!</h1>
+        <p>Asociația Acțiune pentru Sănătate</p>
+    </div>
+
+    <div class="content">
+        <div class="greeting">
+            Bună ziua, {{user_name}}! 👋
+        </div>
+
+        <p>Sperăm că vă simțiți bine și că acest an v-a adus multe bucurii și realizări!</p>
+
+        <p>V-am trimis acest mesaj pentru că acum {{years_since_completion}} an/i ați ales să ne susțineți prin completarea formularului 230, iar gestul dumneavoastră a însemnat foarte mult pentru noi și pentru comunitățile pe care le servim.</p>
+
+        <div class="highlight-box">
+            <p><strong>🎯 De ce ne scriem astăzi?</strong></p>
+            <p>Pentru că dorim să continuăm să facem lucruri frumoase împreună! Sprijinul dumneavoastră ne-a ajutat să derulăm programe de sănătate publică, să oferim consultații gratuite și să educăm comunitatea în domeniul sănătății.</p>
+        </div>
+
+
+
+        <p>Dacă doriți să continuăm să lucrăm împreună și să ne susțineți prin redirecționarea celor 3.5% din impozitul pe venit, v-am pregătit totul pentru a fi cât mai simplu:</p>
+
+        <div style="text-align: center;">
+            <a href="https://actiunepentrusanatate.ro/formular_230/" class="cta-button">
+                📝 Completează Formularul 230
+            </a>
+        </div>
+
+        <p><em>Procesul durează doar 2-3 minute și se poate face complet online!</em></p>
+
+        <div class="highlight-box">
+            <p><strong>💡 Reamintim:</strong> Redirecționarea celor 3.5% nu vă costă nimic suplimentar - sunt bani care oricum se duc la stat, dar pe care îi puteți direcționa către o cauză în care credeți!</p>
+        </div>
+
+        <p>Mulțumim din suflet pentru că ați fost alături de noi și sperăm să putem conta pe sprijinul dumneavoastră și în continuare. Fiecare gest contează și face diferența în viața oamenilor!</p>
+
+        <p>Cu drag și recunoștință,<br>
+            <strong>Echipa Asociației Acțiune pentru Sănătate</strong></p>
+
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">
+            <em>P.S. Dacă aveți întrebări sau nelămuriri, nu ezitați să ne contactați. Suntem aici pentru a vă ajuta!</em>
+        </p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Asociația Acțiune pentru Sănătate</strong></p>
+        <p>📧 actiunepentrusanatate@gmail.com | 📞 +40 755 888 340</p>
+        <p>🌐 <a href="{{website_url}}">www.actiunepentrusanatate.ro</a></p>
+
+        <div class="social-links">
+            <a href="{{facebook_url}}">Facebook</a> |
+            <a href="{{instagram_url}}">Instagram</a> |
+            <a href="{{linkedin_url}}">LinkedIn</a>
+        </div>
+
+        <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">
+            Acest email a fost trimis către {{user_email}} pentru că ați interactionat cu site-ul nostru.<br>
+            <a href="{{unsubscribe_url}}">Dezabonare</a> | <a href="https://actiunepentrusanatate.ro/politica-de-confidentialitate/">Politica de confidențialitate</a>
+        </p>
+    </div>
+</div>
+</body>
+</html>

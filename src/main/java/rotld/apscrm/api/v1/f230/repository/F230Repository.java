@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface F230Repository
         extends JpaRepository<F230, Integer>, JpaSpecificationExecutor<F230> {
@@ -17,4 +19,7 @@ public interface F230Repository
     @Modifying
     @Query(value = "DELETE FROM wordpress.wp_posts WHERE ID = :id AND post_type = 'formular230'", nativeQuery = true)
     int deletePost(@Param("id") Integer id);
+
+    @Query(value = "SELECT * FROM wordpress.wp_posts WHERE post_type = 'formular230'", nativeQuery = true)
+    List<F230> findAll();
 }

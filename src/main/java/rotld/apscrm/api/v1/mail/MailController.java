@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import rotld.apscrm.api.v1.mail.dto.EmailRequestDto;
+import rotld.apscrm.api.v1.mail.service.Formular230ReminderJob;
 import rotld.apscrm.api.v1.user.dto.RegisterUserDto;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.services.EmailSenderService;
@@ -21,6 +22,7 @@ import java.io.UnsupportedEncodingException;
 public class MailController {
 
     private final EmailSenderService emailSenderService;
+    private final Formular230ReminderJob formular230ReminderJob;
 
     @PostMapping
     public void register(@RequestBody EmailRequestDto emailRequestDto) throws MessagingException, UnsupportedEncodingException {
@@ -29,5 +31,15 @@ public class MailController {
                 emailRequestDto.subject(),
                 emailRequestDto.message()
         );
+    }
+
+    @PostMapping("/reminder")
+    public void reminder() {
+        formular230ReminderJob.sendReminders();
+    }
+
+    @PostMapping("/birthday")
+    public void birthday() {
+        formular230ReminderJob.sendBirthdayEmails();
     }
 }
