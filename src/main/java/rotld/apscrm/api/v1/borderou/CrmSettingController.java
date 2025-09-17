@@ -21,7 +21,7 @@ public class CrmSettingController {
     // doar setările folosite în XML 230; schimbă lista dacă ai altele
     private static final List<String> XML_KEYS = List.of(
             "xmlns", "schemaLocation", "xml_luna", "xml_an",
-            "xml_nume", "xml_cui", "xml_cif"
+            "xml_nume", "xml_cui", "xml_cif", "form230_vizibilitate"
     );
 
     @GetMapping
@@ -32,8 +32,7 @@ public class CrmSettingController {
     // dacă vrei numai pe cele de XML:
     @GetMapping("/xml")
     public List<CrmSettingResponseDto> listXmlOnly() {
-        return repo.findAllByOrderByNameAsc().stream().map(CrmSettingResponseDto::of).toList();
-//        return repo.findByNameInOrderByNameAsc(XML_KEYS).stream().map(CrmSettingResponseDto::of).toList();
+        return repo.findByNameInOrderByNameAsc(XML_KEYS).stream().map(CrmSettingResponseDto::of).toList();
     }
 
     // Update value

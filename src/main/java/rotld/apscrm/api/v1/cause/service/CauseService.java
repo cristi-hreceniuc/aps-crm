@@ -37,4 +37,10 @@ public class CauseService {
 
         return repo.findAll(spec, pageable);
     }
+
+    public void updateCauseAmount(Integer id, Double value, String operation) {
+        if ("+".equals(operation)) {
+            repo.addAmountToCause(id, value);
+        } else repo.subtractAmountFromCause(id, value);
+    }
 }

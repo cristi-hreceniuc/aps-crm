@@ -11,6 +11,7 @@ import rotld.apscrm.api.v1.cause.offline_payment.dto.OfflinePaymentDto;
 import rotld.apscrm.api.v1.cause.offline_payment.repository.OfflinePaymentView;
 import rotld.apscrm.api.v1.cause.offline_payment.repository.OfflinePaymentViewRepository;
 import rotld.apscrm.api.v1.cause.offline_payment.repository.OfflinePaymentWriteRepository;
+import rotld.apscrm.api.v1.cause.service.CauseService;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -21,28 +22,29 @@ import java.util.List;
 public class OfflinePaymentService {
     private final OfflinePaymentViewRepository viewRepo;
     private final OfflinePaymentWriteRepository writeRepo;
+    private final CauseService causeService;
 
-    private Pageable remap(Pageable pageable){
+    private Pageable remap(Pageable pageable) {
         if (pageable.getSort().isUnsorted()) return pageable;
         List<Sort.Order> good = new ArrayList<>();
-        for (Sort.Order o: pageable.getSort()){
-            String p = switch (o.getProperty()){
-                case "id"            -> "id";
-                case "date","bookingDate" -> "bookingDate";
-                case "title","causeTitle" -> "causeTitle";
-                case "status"        -> "orderStatus";
-                case "amount"        -> "amount";
-                case "paymentDate"   -> "paymentDate";
+        for (Sort.Order o : pageable.getSort()) {
+            String p = switch (o.getProperty()) {
+                case "id" -> "id";
+                case "date", "bookingDate" -> "bookingDate";
+                case "title", "causeTitle" -> "causeTitle";
+                case "status" -> "orderStatus";
+                case "amount" -> "amount";
+                case "paymentDate" -> "paymentDate";
                 case "paymentMethod" -> "paymentMethod";
                 default -> null;
             };
             if (p != null) good.add(new Sort.Order(o.getDirection(), p));
         }
-        return good.isEmpty()? pageable :
+        return good.isEmpty() ? pageable :
                 PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(good));
     }
 
-    public Page<OfflinePaymentDto> list(Pageable pageable, String q){
+    public Page<OfflinePaymentDto> list(Pageable pageable, String q) {
         Specification<OfflinePaymentView> spec = (root, query, cb) -> {
             if (q == null || q.isBlank()) return cb.conjunction();
             String term = "%" + q.trim().toLowerCase() + "%";
@@ -51,7 +53,7 @@ public class OfflinePaymentService {
             ors.add(cb.like(cb.lower(root.get("orderStatus")), term));
             ors.add(cb.like(cb.lower(root.get("paymentMethod")), term));
             // dacă e doar cifre -> caută și după id/causeId
-            if (q.chars().allMatch(Character::isDigit)){
+            if (q.chars().allMatch(Character::isDigit)) {
                 ors.add(cb.equal(root.get("id"), Integer.parseInt(q)));
                 ors.add(cb.equal(root.get("causeId"), Integer.parseInt(q)));
             }
@@ -72,18 +74,22 @@ public class OfflinePaymentService {
     }
 
     @Transactional
-    public void changeStatus(Integer id, String newStatus){
+    public void changeStatus(Integer id, String newStatus) {
         // nu permitem modificarea dacă este online-paid
         OfflinePaymentView v = viewRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Not found: " + id));
         if ("online-paid".equalsIgnoreCase(v.getOrderStatus()))
             throw new IllegalStateException("Online paid cannot be modified");
-
+        if ("rejected".equals(newStatus)) {
+            causeService.updateCauseAmount(v.getCauseId(), v.getAmount(), "-");
+        } else causeService.updateCauseAmount(v.getCauseId(), v.getAmount(), "+");
         int n = writeRepo.updateStatus(id, newStatus);
         if (n == 0) throw new IllegalArgumentException("Not found for update: " + id);
     }
 
     @Transactional
-    public void delete(Integer id){
+    public void delete(Integer id) {
+        OfflinePaymentView v = viewRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Not found: " + id));
+        causeService.updateCauseAmount(v.getCauseId(), v.getAmount(), "-");
         int n = writeRepo.hardDelete(id);
         if (n == 0) throw new IllegalArgumentException("Not found for delete: " + id);
     }
