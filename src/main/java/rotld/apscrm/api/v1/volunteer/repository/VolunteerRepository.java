@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, JpaSpecificationExecutor<Volunteer> {
@@ -63,4 +64,11 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Integer>, 
 
     @Query("SELECT v FROM Volunteer v WHERE v.postType = 'aps_volunteer'")
     List<Volunteer> findAll();
+
+    @Query("""
+       select v from Volunteer v
+       left join fetch v.meta m
+       where v.id = :id
+       """)
+    Optional<Volunteer> findByIdWithMeta(@Param("id") Integer id);
 }

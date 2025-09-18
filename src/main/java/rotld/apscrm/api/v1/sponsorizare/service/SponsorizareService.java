@@ -8,8 +8,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import rotld.apscrm.api.v1.d177.repository.D177Settings;
 import rotld.apscrm.api.v1.d177.repository.D177SettingsRepository;
 import rotld.apscrm.api.v1.sponsorizare.dto.SponsorizareResponseDto;
@@ -107,10 +109,28 @@ public class SponsorizareService {
         return "";
     }
 
+    @Transactional
+    public void delete(Integer id){
+        repo.deleteMeta(id);
+        int affected = repo.deletePost(id);
+        if (affected == 0) throw new IllegalArgumentException("D177 record not found: " + id);
+    }
+
+    @Transactional(readOnly = true)
+    public SponsorizareResponseDto findOne(Integer id){
+        Sponsorizare r = repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sponsorizare not found: " + id));
+        // recuperează flags persistente dacă există
+        D177Settings flags = fetchFlags(List.of(r)).get(r.getId());
+        return toDto(r, flags);
+    }
+
     private SponsorizareResponseDto toDto(Sponsorizare r, D177Settings ps){
         return SponsorizareResponseDto.builder()
                 .id(r.getId())
                 .date(r.getPostDateIso())
+
+                // grid
                 .companyName(nz(r.getCompanyName(), r.getTitle()))
                 .fiscalCode(nz(r.getFiscalCode()))
                 .email(nz(r.getEmail()))
@@ -118,21 +138,35 @@ public class SponsorizareService {
                 .iban(nz(r.getIban()))
                 .amount(nz(r.getAmountStr()))
                 .contractDate(nz(r.getContractDate()))
+
                 .docUrl(r.getDocUrl())
                 .jsonUrl(r.getJsonUrl())
                 .signatureUrl(r.getSignatureUrl())
                 .detail(nz(r.getDetail(), r.getAdminEdit()))
                 .adminEdit(r.getAdminEdit())
+
                 .downloaded(Boolean.TRUE.equals(ps != null ? ps.getDownloaded() : r.getDownloaded()))
                 .verified(Boolean.TRUE.equals(ps != null ? ps.getVerified()   : r.getVerified()))
                 .corrupt(Boolean.TRUE.equals(ps != null ? ps.getCorrupt()     : r.getCorrupt()))
+
+                // ✨ extra pentru view
+                .companyRegCom(nz(r.getCompanyRegCom()))
+                .companyAddress(nz(r.getCompanyAddress()))
+                .companyCounty(nz(r.getCompanyCounty()))
+                .companyCity(nz(r.getCompanyCity()))
+
+                .corrAddress(nz(r.getCorrAddress()))
+                .corrCounty(nz(r.getCorrCounty()))
+                .corrCity(nz(r.getCorrCity()))
+
+                .repFirstName(nz(r.getRepFirstName()))
+                .repLastName(nz(r.getRepLastName()))
+                .repRole(nz(r.getRepRole()))
+
+                .bankName(nz(r.getBankName()))
+                .signatureB64(nz(r.getSignatureB64()))
+                .sendEmail(Boolean.TRUE.equals(r.getSendEmail()))
                 .build();
     }
 
-    @Transactional
-    public void delete(Integer id){
-        repo.deleteMeta(id);
-        int affected = repo.deletePost(id);
-        if (affected == 0) throw new IllegalArgumentException("D177 record not found: " + id);
-    }
 }

@@ -6,15 +6,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import rotld.apscrm.api.v1.d177.dto.D177DetailsDto;
 import rotld.apscrm.api.v1.d177.dto.D177ResponseDto;
-import rotld.apscrm.api.v1.d177.repository.D177;
 import rotld.apscrm.api.v1.d177.service.D177Service;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -52,5 +46,10 @@ public class D177Controller {
             @PageableDefault(size = 10, sort = "postDateIso") Pageable pageable
     ){
         return service.search(pageable, q);
+    }
+
+    @GetMapping("/{id}")
+    public D177DetailsDto one(@PathVariable Integer id){
+        return service.getDetails(id);
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rotld.apscrm.api.v1.d177.repository.D177Settings;
 import rotld.apscrm.api.v1.d177.repository.D177SettingsRepository;
+import rotld.apscrm.api.v1.f230.dto.F230DetailDto;
 import rotld.apscrm.api.v1.f230.dto.F230ResponseDto;
 import rotld.apscrm.api.v1.f230.service.F230Service;
 
@@ -42,5 +43,10 @@ public class F230Controller {
     public ResponseEntity<Void> delete(@PathVariable Integer id){
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}")
+    public F230DetailDto getOne(@PathVariable Integer id){
+        return service.detail(id);
     }
 }

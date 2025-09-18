@@ -49,4 +49,9 @@ public class SponsorizareController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public SponsorizareResponseDto get(@PathVariable Integer id){
+        return service.findOne(id);
+    }
 }

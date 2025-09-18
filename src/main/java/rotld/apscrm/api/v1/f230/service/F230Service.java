@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rotld.apscrm.api.v1.d177.repository.D177Settings;
 import rotld.apscrm.api.v1.d177.repository.D177SettingsRepository;
+import rotld.apscrm.api.v1.f230.dto.F230DetailDto;
 import rotld.apscrm.api.v1.f230.dto.F230ResponseDto;
 import rotld.apscrm.api.v1.f230.repository.F230;
+import rotld.apscrm.api.v1.f230.repository.F230DetailRow;
 import rotld.apscrm.api.v1.f230.repository.F230Repository;
 
 import java.util.*;
@@ -131,5 +133,38 @@ public class F230Service {
         repo.deleteMeta(id);
         int affected = repo.deletePost(id);
         if (affected == 0) throw new IllegalArgumentException("F230 record not found: " + id);
+    }
+
+    public F230DetailDto detail(Integer id){
+        F230DetailRow r = repo.findDetailById(id);
+        if (r == null) throw new IllegalArgumentException("F230 not found: " + id);
+        return F230DetailDto.builder()
+                .id(r.getId())
+                .postDateIso(r.getPostDateIso())
+                .title(r.getTitle())
+                .year(r.getYear())
+                .firstName(r.getFirstName())
+                .lastName(r.getLastName())
+                .initiala(r.getInitiala())
+                .cnp(r.getCnp())
+                .street(r.getStreet())
+                .number(r.getNumber())
+                .block(r.getBlock())
+                .staircase(r.getStaircase())
+                .floor(r.getFloor())
+                .apartment(r.getApartment())
+                .county(r.getCounty())
+                .city(r.getCity())
+                .postalCode(r.getPostalCode())
+                .email(r.getEmail())
+                .phone(r.getPhone())
+                .fax(r.getFax())
+                .iban(r.getIban())
+                .distrib2(r.getDistrib2())
+                .acordEmail(r.getAcordEmail())
+                .pdfUrl(r.getPdfUrl())
+                .nrBorderou(r.getNrBorderou())
+                .adminEdit(r.getAdminEdit())
+                .build();
     }
 }

@@ -7,15 +7,15 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rotld.apscrm.api.v1.d177.dto.D177DetailsDto;
 import rotld.apscrm.api.v1.d177.dto.D177ResponseDto;
-import rotld.apscrm.api.v1.d177.repository.D177;
-import rotld.apscrm.api.v1.d177.repository.D177Repository;
-import rotld.apscrm.api.v1.d177.repository.D177Settings;
-import rotld.apscrm.api.v1.d177.repository.D177SettingsRepository;
+import rotld.apscrm.api.v1.d177.repository.*;
 import rotld.apscrm.common.PhpSerialized;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
@@ -24,36 +24,39 @@ import java.util.stream.Collectors;
 public class D177Service {
     private final D177Repository repo;
     private final D177SettingsRepository settingsRepo;
+    private final D177DetailsRepository d177DetailsRepository;
 
     // map UI -> coloane reale
-    private static final Map<String,String> SORT_MAP = Map.ofEntries(
-            Map.entry("companyName",  "companyName"), // 🔴 acum sortăm pe denumirea din meta
-            Map.entry("fiscalCode",   "fiscalCode"),
-            Map.entry("email",        "email"),
-            Map.entry("amount",       "amountNum"),
+    private static final Map<String, String> SORT_MAP = Map.ofEntries(
+            Map.entry("companyName", "companyName"), // 🔴 acum sortăm pe denumirea din meta
+            Map.entry("fiscalCode", "fiscalCode"),
+            Map.entry("email", "email"),
+            Map.entry("amount", "amountNum"),
             Map.entry("contractDate", "contractDate"),
-            Map.entry("downloaded",   "downloaded"),
-            Map.entry("verified",     "verified"),
-            Map.entry("corrupt",      "corrupt"),
-            Map.entry("id",           "id"),
-            Map.entry("date",         "postDateIso")
+            Map.entry("downloaded", "downloaded"),
+            Map.entry("verified", "verified"),
+            Map.entry("corrupt", "corrupt"),
+            Map.entry("id", "id"),
+            Map.entry("date", "postDateIso")
     );
 
     private static final Set<String> ALLOWED = Set.of(
-            "id","postDateIso",
+            "id", "postDateIso",
             "companyName",            //
-            "fiscalCode","email","phone",
-            "amountNum","amountStr","contractDate",
-            "downloaded","verified","corrupt"
+            "fiscalCode", "email", "phone",
+            "amountNum", "amountStr", "contractDate",
+            "downloaded", "verified", "corrupt"
     );
 
-    /** Re-map sort keys de la UI la coloanele entității @Subselect */
-    private Pageable remapSort(Pageable pageable){
+    /**
+     * Re-map sort keys de la UI la coloanele entității @Subselect
+     */
+    private Pageable remapSort(Pageable pageable) {
         Sort sort = pageable.getSort();
         if (sort == null || sort.isUnsorted()) return pageable;
 
         List<Sort.Order> orders = new ArrayList<>();
-        for (Sort.Order o : sort){
+        for (Sort.Order o : sort) {
             String ui = o.getProperty();
             String be = SORT_MAP.getOrDefault(ui, ui);
             if (!ALLOWED.contains(be)) continue;
@@ -62,8 +65,10 @@ public class D177Service {
         return orders.isEmpty() ? pageable : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(orders));
     }
 
-    /** Listă fără căutare */
-    public Page<D177ResponseDto> getPage(Pageable pageable){
+    /**
+     * Listă fără căutare
+     */
+    public Page<D177ResponseDto> getPage(Pageable pageable) {
         Pageable p = remapSort(pageable);
         Page<D177> page = repo.findAll(p);
 
@@ -71,8 +76,10 @@ public class D177Service {
         return page.map(r -> toDto(r, flags.get(r.getId())));
     }
 
-    /** Search server-side (q pe mai multe câmpuri) */
-    public Page<D177ResponseDto> search(Pageable pageable, String q){
+    /**
+     * Search server-side (q pe mai multe câmpuri)
+     */
+    public Page<D177ResponseDto> search(Pageable pageable, String q) {
         Pageable p = remapSort(pageable);
         Specification<D177> spec = buildSpec(q);
 
@@ -81,14 +88,14 @@ public class D177Service {
         return page.map(r -> toDto(r, flags.get(r.getId())));
     }
 
-    private Map<Integer, D177Settings> fetchFlags(List<D177> rows){
+    private Map<Integer, D177Settings> fetchFlags(List<D177> rows) {
         if (rows.isEmpty()) return Collections.emptyMap();
         List<Integer> ids = rows.stream().map(D177::getId).toList();
         return settingsRepo.findByPostIdIn(ids).stream()
                 .collect(Collectors.toMap(D177Settings::getPostId, ps -> ps));
     }
 
-    private Specification<D177> buildSpec(String q){
+    private Specification<D177> buildSpec(String q) {
         return (root, query, cb) -> {
             if (q == null || q.isBlank()) return cb.conjunction();
 
@@ -98,13 +105,16 @@ public class D177Service {
 
             // 🔴 DOAR aceste câmpuri:
             ors.add(cb.like(cb.lower(root.get("companyName")), like));
-            ors.add(cb.like(cb.lower(root.get("fiscalCode")),  like));
-            ors.add(cb.like(cb.lower(root.get("email")),       like));
+            ors.add(cb.like(cb.lower(root.get("fiscalCode")), like));
+            ors.add(cb.like(cb.lower(root.get("email")), like));
 
             // opțional: dacă e numeric, permite și egalitate pe ID
             boolean numeric = term.chars().allMatch(Character::isDigit);
-            if (numeric){
-                try { ors.add(cb.equal(root.get("id"), Integer.parseInt(term))); } catch (Exception ignored) {}
+            if (numeric) {
+                try {
+                    ors.add(cb.equal(root.get("id"), Integer.parseInt(term)));
+                } catch (Exception ignored) {
+                }
             }
 
             return cb.or(ors.toArray(new Predicate[0]));
@@ -118,7 +128,7 @@ public class D177Service {
         return "";
     }
 
-    private D177ResponseDto toDto(D177 r, D177Settings ps){
+    private D177ResponseDto toDto(D177 r, D177Settings ps) {
         return D177ResponseDto.builder()
                 .id(r.getId())
                 .date(r.getPostDateIso())
@@ -132,20 +142,72 @@ public class D177Service {
                 .detail(firstNonEmpty(r.getDetail(), r.getAdminEdit()))
                 .adminEdit(r.getAdminEdit())
                 .downloaded(Boolean.TRUE.equals((ps != null ? ps.getDownloaded() : r.getDownloaded())))
-                .verified(Boolean.TRUE.equals((ps != null ? ps.getVerified()   : r.getVerified())))
-                .corrupt(Boolean.TRUE.equals((ps != null ? ps.getCorrupt()     : r.getCorrupt())))
+                .verified(Boolean.TRUE.equals((ps != null ? ps.getVerified() : r.getVerified())))
+                .corrupt(Boolean.TRUE.equals((ps != null ? ps.getCorrupt() : r.getCorrupt())))
                 .build();
     }
 
     @Transactional
-    public void updateFlags(Integer id, Boolean downloaded, Boolean verified, Boolean corrupt){
+    public void updateFlags(Integer id, Boolean downloaded, Boolean verified, Boolean corrupt) {
         settingsRepo.upsertFlags(id, downloaded, verified, corrupt);
     }
 
     @Transactional
-    public void delete(Integer id){
+    public void delete(Integer id) {
         repo.deleteMeta(id);
         int affected = repo.deletePost(id);
         if (affected == 0) throw new IllegalArgumentException("D177 record not found: " + id);
+    }
+
+    public D177DetailsDto getDetails(Integer id) {
+        D177Details r = d177DetailsRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("D177 not found: " + id));
+
+        Map<String, String> firma = parsePhpMap(r.getFirmaData());
+        Map<String, String> coresp = parsePhpMap(r.getCorespData());
+        Map<String, String> repr = parsePhpMap(r.getReprezentantData());
+        Map<String, String> contr = parsePhpMap(r.getContractData());
+
+        return D177DetailsDto.builder()
+                .id(r.getId())
+                .title(nz(r.getTitle()))
+                .postDateIso(nz(r.getPostDateIso()))
+                .firma(firma)
+                .corespondenta(coresp)
+                .reprezentant(repr)
+                .contract(contr)
+                .docUrl(nz(r.getDocUrl()))
+                .sigUrl(nz(r.getSigUrl()))
+                .docHtml(nz(r.getDocHtml()))
+                .adminEdit(nz(r.getAdminEdit()))
+                .downloaded(Boolean.TRUE.equals(r.getDownloaded()))
+                .verified(Boolean.TRUE.equals(r.getVerified()))
+                .corrupt(Boolean.TRUE.equals(r.getCorrupt()))
+                .build();
+    }
+
+    /* ------------ helperi ------------ */
+
+    private static final Pattern PAIR =
+            Pattern.compile("s:\\d+:\"(.*?)\";s:\\d+:\"(.*?)\";", Pattern.DOTALL);
+
+    /**
+     * Parser tolerant pentru a:... cu perechi s:"key";s:"val"; …
+     */
+    static Map<String, String> parsePhpMap(String s) {
+        Map<String, String> m = new LinkedHashMap<>();
+        if (s == null || s.isBlank()) return m;
+        try {
+            Matcher it = PAIR.matcher(s);
+            while (it.find()) {
+                m.put(it.group(1), it.group(2));
+            }
+        } catch (Exception ignored) {
+        }
+        return m;
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s.trim();
     }
 }

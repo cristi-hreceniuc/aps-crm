@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import rotld.apscrm.api.v1.volunteer.dto.VolunteerDetailsDto;
 import rotld.apscrm.api.v1.volunteer.dto.VolunteerResponseDto;
 import rotld.apscrm.api.v1.volunteer.mapper.VolunteerMapper;
 import rotld.apscrm.api.v1.volunteer.repository.Volunteer;
@@ -55,4 +56,8 @@ public class VolunteerController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}")
+    public VolunteerDetailsDto getVolunteer(@PathVariable Integer id){
+        return volunteerService.getDetails(id);
+    }
 }
