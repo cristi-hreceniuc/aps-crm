@@ -21,7 +21,7 @@ import org.hibernate.annotations.Synchronize;
     CAST(donors.meta_value  AS UNSIGNED)                   AS donors,
     CAST(donated.meta_value AS UNSIGNED)                   AS donated,
 
-    s.guid                                                 AS guid
+    CONCAT('https://actiunepentrusanatate.ro/doneaza/?cause_id=', s.ID) AS guid
   FROM wordpress.wp_posts s
   LEFT JOIN wordpress.wp_postmeta goal
          ON goal.post_id = s.ID AND goal.meta_key   = 'frmaster-funding-goal'
