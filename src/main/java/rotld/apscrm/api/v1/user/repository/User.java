@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import rotld.apscrm.api.v1.user.dto.UserRole;
 import rotld.apscrm.api.v1.user.dto.UserStatus;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -58,6 +59,17 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     private UserStatus userStatus;
+
+    @Column(length = 128)
+    private String resetToken;              // simplu; pentru securitate maximă poți salva HASH-ul token-ului
+
+    private Instant resetTokenExpiresAt;    // expiră după X minute
+
+    // in rotld.apscrm.api.v1.user.repository.User
+    private String otpHash;
+    private Instant otpExpiresAt;
+    private int otpAttempts;
+    private Instant otpLockedUntil;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
