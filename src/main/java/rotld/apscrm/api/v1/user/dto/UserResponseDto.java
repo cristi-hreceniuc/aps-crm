@@ -16,6 +16,7 @@ public record UserResponseDto (
         LocalDateTime updatedAt,
         String gender,
         UserRole role,
-        UserStatus status
+        UserStatus status,
+        Boolean isPremium
 ){
 }

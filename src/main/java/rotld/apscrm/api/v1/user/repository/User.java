@@ -65,11 +65,12 @@ public class User implements UserDetails {
 
     private Instant resetTokenExpiresAt;    // expiră după X minute
 
-    // in rotld.apscrm.api.v1.user.repository.User
     private String otpHash;
     private Instant otpExpiresAt;
     private int otpAttempts;
     private Instant otpLockedUntil;
+    @Column(name="is_premium")
+    private Boolean isPremium;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

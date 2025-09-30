@@ -8,18 +8,19 @@ public class UserMapper {
 
     private UserMapper() {}
 
-    public static UserResponseDto toEntity(User user) {
+    public static UserResponseDto toDto(User user) {
         return UserResponseDto.builder()
                 .id(user.getId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .email(user.getEmail())
-                .password(new BCryptPasswordEncoder().encode(user.getPassword()))
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .gender(user.getGender())
                 .role(user.getUserRole())
                 .status(user.getUserStatus())
+                .isPremium(user.getIsPremium())
                 .build();
     }
+
 }
