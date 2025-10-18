@@ -6,5 +6,7 @@ import lombok.Builder;
 public record LoginResponse(
         String token,
         long expiresIn,
-        UserProfileDto user
+        UserProfileDto user,
+        String refreshToken,
+        long refreshExpiresIn
 ) {}

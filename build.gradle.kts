@@ -30,6 +30,7 @@ dependencies {
     implementation("org.jsoup:jsoup:1.21.1")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
+    implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
 
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")

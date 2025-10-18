@@ -2,10 +2,15 @@ package rotld.apscrm.api.v1.auth;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import rotld.apscrm.api.v1.auth.dto.RefreshRequest;
+import rotld.apscrm.api.v1.auth.dto.TokenResponse;
+import rotld.apscrm.api.v1.auth.service.RefreshTokenService;
 import rotld.apscrm.api.v1.user.dto.*;
 import rotld.apscrm.api.v1.user.repository.User;
+import rotld.apscrm.api.v1.user.repository.UserRepository;
 import rotld.apscrm.services.AuthenticationService;
 import rotld.apscrm.services.JwtService;
 
@@ -15,6 +20,8 @@ import rotld.apscrm.services.JwtService;
 public class AuthenticationController {
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
+    private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
 
     @PostMapping("/register")
     public User register(@RequestBody RegisterUserDto registerUserDto) {
@@ -26,12 +33,42 @@ public class AuthenticationController {
         User authenticatedUser = authenticationService.authenticate(loginUserDto);
 
         String jwtToken = jwtService.generateToken(authenticatedUser);
+        var t = authenticationService.issueTokens(authenticatedUser);
 
         return LoginResponse.builder()
                 .token(jwtToken)
                 .expiresIn(jwtService.getExpirationTime())
                 .user(new UserProfileDto(authenticatedUser.getFirstName() + " " + authenticatedUser.getLastName(), authenticatedUser.getEmail()))
+                .refreshToken(t.refresh())
+                .refreshExpiresIn(t.refreshExpMs())
                 .build();
+    }
+
+    /** Reînnoiește access token-ul pe baza refresh-ului (și rotește refresh-ul). */
+    @PostMapping("/refresh")
+    public TokenResponse refresh(@RequestBody RefreshRequest req) {
+        var rt = refreshTokenService.validateUsable(req.refreshToken());
+        // încarcă userul
+        User user = userRepository.findById(rt.getUserId()).orElseThrow();
+        // gen. access nou
+        String access = jwtService.generateToken(user);
+        long accessExp = jwtService.getExpirationTime();
+        // rotește refresh-ul
+        var newRt = refreshTokenService.rotate(rt, user.getId(), jwtService.getRefreshExpirationTime());
+
+        return TokenResponse.builder()
+                .token(access).expiresIn(accessExp)
+                .refreshToken(newRt.getToken()).refreshExpiresIn(jwtService.getRefreshExpirationTime())
+                .build();
+    }
+
+    /** Logout opțional: revocă toate refresh-urile userului curent. */
+    @PostMapping("/logout")
+    public void logout() {
+        var auth = (org.springframework.security.core.userdetails.User) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        var user = userRepository.findByEmail(auth.getUsername()).orElseThrow();
+        refreshTokenService.revokeAllForUser(user.getId());
     }
 
     // 1) Forgot – trimite email cu linkul

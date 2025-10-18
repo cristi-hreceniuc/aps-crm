@@ -24,6 +24,8 @@ public class JwtService {
     @Value("${security.jwt.expiration-time}")
     private long jwtExpiration;
 
+    @Value("${security.jwt.refresh-expiration-time}")
+    private long refreshExpiration;
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -63,6 +65,13 @@ public class JwtService {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
+
+    public String generateRefreshToken(UserDetails user) {
+        // poți pune claimuri minimale; sub = email
+        return buildToken(new HashMap<>(), user, refreshExpiration);
+    }
+
+    public long getRefreshExpirationTime() { return refreshExpiration; }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());

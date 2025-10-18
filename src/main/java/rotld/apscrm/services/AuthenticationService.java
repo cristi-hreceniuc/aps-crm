@@ -8,6 +8,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import rotld.apscrm.api.v1.auth.entity.RefreshToken;
+import rotld.apscrm.api.v1.auth.service.RefreshTokenService;
 import rotld.apscrm.api.v1.user.dto.LoginUserDto;
 import rotld.apscrm.api.v1.user.dto.RegisterUserDto;
 import rotld.apscrm.api.v1.user.dto.UserRole;
@@ -31,6 +33,8 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmailSenderService emailSenderService;
+    private final RefreshTokenService refreshTokenService;
+    private final JwtService jwtService;
 
     @Value("${app.reset.frontend-url}")
     private String resetUrlBase;
@@ -271,4 +275,12 @@ public class AuthenticationService {
         userRepository.save(user);
     }
 
+    public record Tokens(String access, long accessExpMs, String refresh, long refreshExpMs) {}
+
+    public Tokens issueTokens(User user) {
+        String access = jwtService.generateToken(user);
+        long accessExp = jwtService.getExpirationTime();
+        RefreshToken rt = refreshTokenService.create(user.getId(), jwtService.getRefreshExpirationTime());
+        return new Tokens(access, accessExp, rt.getToken(), jwtService.getRefreshExpirationTime());
+    }
 }
