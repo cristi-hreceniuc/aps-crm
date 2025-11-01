@@ -42,7 +42,11 @@ public class ProgressService {
                     // fallback: primul conținut disponibil
                     Module m = moduleRepo.findAllByIsActiveTrueOrderByPositionAsc().get(0);
                     Submodule s = submoduleRepo.findByModuleIdOrderByPositionAsc(m.getId()).get(0);
-                    Lesson l = lessonRepo.findBySubmoduleIdOrderByPositionAsc(s.getId()).get(0);
+                    var lessons = lessonRepo.findBySubmoduleOrdered(s.getId());
+                    if (lessons.isEmpty()) {
+                        throw new EntityNotFoundException("No active lessons found");
+                    }
+                    Lesson l = lessons.get(0);
                     return new ProgressDTO(m.getId(), s.getId(), l.getId(), 0, ProgressStatus.IN_PROGRESS);
                 });
     }
@@ -87,11 +91,11 @@ public class ProgressService {
             lessonStatusRepo.save(pls);
 
             // next lesson în submodul
-            var lessons = lessonRepo.findBySubmoduleIdOrderByPositionAsc(l.getSubmodule().getId());
+            var lessons = lessonRepo.findBySubmoduleOrdered(l.getSubmodule().getId());
             int idx = IntStream.range(0, lessons.size())
-                    .filter(i -> lessons.get(i).getId().equals(lessonId)).findFirst().orElse(0);
+                    .filter(i -> lessons.get(i).getId().equals(lessonId)).findFirst().orElse(-1);
 
-            if (idx + 1 < lessons.size()) {
+            if (idx >= 0 && idx + 1 < lessons.size()) {
                 nextLessonId = lessons.get(idx + 1).getId();
                 nextScreen = 0;
             } else {
@@ -99,24 +103,30 @@ public class ProgressService {
                 // următorul submodul / modul
                 var subs = submoduleRepo.findByModuleIdOrderByPositionAsc(m.getId());
                 int sidx = IntStream.range(0, subs.size())
-                        .filter(i -> subs.get(i).getId().equals(l.getSubmodule().getId())).findFirst().orElse(0);
-                if (sidx + 1 < subs.size()) {
+                        .filter(i -> subs.get(i).getId().equals(l.getSubmodule().getId())).findFirst().orElse(-1);
+                if (sidx >= 0 && sidx + 1 < subs.size()) {
                     var nextSub = subs.get(sidx + 1);
                     nextSubId = nextSub.getId();
-                    nextLessonId = lessonRepo.findBySubmoduleIdOrderByPositionAsc(nextSub.getId()).get(0).getId();
-                    nextScreen = 0;
+                    var nextSubLessons = lessonRepo.findBySubmoduleOrdered(nextSub.getId());
+                    if (!nextSubLessons.isEmpty()) {
+                        nextLessonId = nextSubLessons.get(0).getId();
+                        nextScreen = 0;
+                    }
                 } else {
                     endOfModule = true;
                     var mods = moduleRepo.findAllByIsActiveTrueOrderByPositionAsc();
                     int midx = IntStream.range(0, mods.size())
-                            .filter(i -> mods.get(i).getId().equals(m.getId())).findFirst().orElse(0);
-                    if (midx + 1 < mods.size()) {
+                            .filter(i -> mods.get(i).getId().equals(m.getId())).findFirst().orElse(-1);
+                    if (midx >= 0 && midx + 1 < mods.size()) {
                         var nm = mods.get(midx + 1);
                         nextModId = nm.getId();
                         var nsub = submoduleRepo.findByModuleIdOrderByPositionAsc(nm.getId()).get(0);
                         nextSubId = nsub.getId();
-                        nextLessonId = lessonRepo.findBySubmoduleIdOrderByPositionAsc(nsub.getId()).get(0).getId();
-                        nextScreen = 0;
+                        var nsubLessons = lessonRepo.findBySubmoduleOrdered(nsub.getId());
+                        if (!nsubLessons.isEmpty()) {
+                            nextLessonId = nsubLessons.get(0).getId();
+                            nextScreen = 0;
+                        }
                     }
                 }
             }
