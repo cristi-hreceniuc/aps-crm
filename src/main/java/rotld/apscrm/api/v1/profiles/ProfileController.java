@@ -27,9 +27,9 @@ public class ProfileController {
     }
 
     @PostMapping
-    public ProfileCardDTO create(@RequestBody ProfileCreateReq req) {
+    public ProfileCardDTO create(@RequestBody @jakarta.validation.Valid ProfileCreateReq req) {
         User user = userRepo.findById(SecurityUtils.currentUserId()).orElseThrow();
-        return profileService.createForUser(user, req.name(), req.avatarUri());
+        return profileService.createForUser(user, req.name(), req.avatarUri(), req.birthday(), req.gender());
     }
 
     @GetMapping("/{profileId}/lessons-progress")

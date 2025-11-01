@@ -7,6 +7,8 @@ import org.hibernate.annotations.Type;
 import rotld.apscrm.api.v1.user.repository.User;
 import com.vladmihalcea.hibernate.type.json.JsonType;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @Entity
@@ -20,4 +22,7 @@ public class Profile {
     @Type(JsonType.class)
     @Column(columnDefinition="json")
     String settings;
+    LocalDate birthday;
+    @Column(length = 20)
+    String gender;
 }
