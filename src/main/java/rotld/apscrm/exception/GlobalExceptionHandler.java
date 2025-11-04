@@ -101,15 +101,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler
-    public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest request) {
-        return createProblemDetail(HttpStatus.CONFLICT, "Data integrity violation.", ex, request); // 409 Conflict is often more appropriate
+    public ProblemDetail handleDuplicateEmailException(DuplicateEmailException ex, HttpServletRequest request) {
+        return createProblemDetail(HttpStatus.CONFLICT, "Email already registered.", ex, request);
     }
 
-//    @ExceptionHandler
-//    public ProblemDetail handlePSQLException(PSQLException ex, HttpServletRequest request) {
-//        // You can add logic here to check ex.getSQLState() for specific PostgreSQL errors
-//        return createProblemDetail(HttpStatus.BAD_REQUEST, "Database error.", ex, request);
-//    }
+    @ExceptionHandler
+    public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest request) {
+        // Check if this is a duplicate email error
+        String message = ex.getMessage();
+        if (message != null && (message.contains("uq_users_email") || message.contains("Duplicate entry") && message.contains("email"))) {
+            // Extract email from error message if possible
+            String detail = "Email address is already registered.";
+            ProblemDetail problemDetail = createProblemDetail(HttpStatus.CONFLICT, "Email already registered.", ex, request);
+            problemDetail.setDetail(detail);
+            return problemDetail;
+        }
+        return createProblemDetail(HttpStatus.CONFLICT, "Data integrity violation.", ex, request);
+    }
 
     @ExceptionHandler
     public ProblemDetail handleMissingServletRequestParameterException(MissingServletRequestParameterException ex, HttpServletRequest request) {

@@ -16,13 +16,12 @@ import rotld.apscrm.api.v1.user.dto.UserRole;
 import rotld.apscrm.api.v1.user.dto.UserStatus;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
+import rotld.apscrm.exception.DuplicateEmailException;
 
-import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -50,6 +49,11 @@ public class AuthenticationService {
     private long otpLockoutMinutes;
 
     public User signup(RegisterUserDto input) {
+        // Check if email already exists
+        if (userRepository.findByEmail(input.email()).isPresent()) {
+            throw new DuplicateEmailException(input.email());
+        }
+
         User user = User.builder()
                 .lastName(input.lastName())
                 .firstName(input.firstName())
