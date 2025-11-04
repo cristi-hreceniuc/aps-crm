@@ -11,6 +11,10 @@ import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
 import rotld.apscrm.common.SecurityUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @RestController
@@ -30,7 +34,55 @@ public class ProfileController {
     @PostMapping
     public ProfileCardDTO create(@RequestBody @jakarta.validation.Valid ProfileCreateReq req) {
         User user = userRepo.findById(SecurityUtils.currentUserId()).orElseThrow();
-        return profileService.createForUser(user, req.name(), req.avatarUri(), req.birthday(), req.gender());
+        LocalDate birthday = parseBirthday(req.birthday());
+        return profileService.createForUser(user, req.name(), req.avatarUri(), birthday, req.gender());
+    }
+
+    private LocalDate parseBirthday(String birthdayString) {
+        if (birthdayString == null || birthdayString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Birthday cannot be null or empty");
+        }
+
+        String trimmed = birthdayString.trim();
+        
+        // Try to parse as LocalDateTime first (handles formats like "2020-10-10T00:00:00")
+        // This will extract only the date part from datetime strings
+        try {
+            LocalDateTime dateTime = LocalDateTime.parse(trimmed);
+            return dateTime.toLocalDate();
+        } catch (DateTimeParseException e) {
+            // Try with ISO_LOCAL_DATE_TIME formatter (handles formats with or without seconds)
+            try {
+                LocalDateTime dateTime = LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                return dateTime.toLocalDate();
+            } catch (DateTimeParseException e1) {
+                // If that fails, try parsing as LocalDate directly (ISO date format)
+                try {
+                    return LocalDate.parse(trimmed);
+                } catch (DateTimeParseException e2) {
+                    // Try with common date formats
+                    String[] patterns = {
+                        "yyyy-MM-dd",
+                        "dd/MM/yyyy",
+                        "MM/dd/yyyy",
+                        "yyyy/MM/dd"
+                    };
+                    
+                    for (String pattern : patterns) {
+                        try {
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                            return LocalDate.parse(trimmed, formatter);
+                        } catch (DateTimeParseException ignored) {
+                            // Continue to next pattern
+                        }
+                    }
+                    
+                    // If all parsing attempts fail, throw an exception
+                    throw new IllegalArgumentException("Unable to parse birthday: " + birthdayString + 
+                        ". Supported formats: ISO date-time (e.g., 2020-10-10T00:00:00), ISO date (e.g., 2020-10-10), or dd/MM/yyyy");
+                }
+            }
+        }
     }
 
     @GetMapping("/{profileId}/lessons-progress")
