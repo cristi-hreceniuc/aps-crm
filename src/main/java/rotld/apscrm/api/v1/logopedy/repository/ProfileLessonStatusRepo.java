@@ -1,8 +1,9 @@
 package rotld.apscrm.api.v1.logopedy.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.repository.query.Param;
 import rotld.apscrm.api.v1.logopedy.entities.ProfileLessonKey;
 import rotld.apscrm.api.v1.logopedy.entities.ProfileLessonStatus;
 import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
@@ -31,5 +32,9 @@ public interface ProfileLessonStatusRepo extends JpaRepository<ProfileLessonStat
     boolean existsById(ProfileLessonKey id);
 
     List<ProfileLessonStatus> findAllByIdProfileId(Long profileId);
+
+    @Modifying
+    @Query("DELETE FROM ProfileLessonStatus pls WHERE pls.id.profileId = :profileId")
+    void deleteAllByProfileId(@Param("profileId") Long profileId);
 
 }

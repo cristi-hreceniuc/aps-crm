@@ -9,6 +9,7 @@ import rotld.apscrm.api.v1.logopedy.entities.Profile;
 import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
 import rotld.apscrm.api.v1.logopedy.repository.LessonRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileLessonStatusRepo;
+import rotld.apscrm.api.v1.logopedy.repository.ProfileProgressRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
 import rotld.apscrm.api.v1.profiles.dto.LessonProgressDTO;
 import rotld.apscrm.api.v1.profiles.dto.ProfileCardDTO;
@@ -26,6 +27,7 @@ public class ProfileService {
     private final ProfileRepo profileRepo;
     private final LessonRepo lessonRepo;
     private final ProfileLessonStatusRepo plsRepo;
+    private final ProfileProgressRepo profileProgressRepo;
 
     private Profile requireOwnedProfile(Long profileId, String userId) {
         return profileRepo.findByIdAndUserId(profileId, userId)
@@ -91,6 +93,14 @@ public class ProfileService {
     @Transactional
     public void delete(Long profileId, String userId) {
         Profile profile = requireOwnedProfile(profileId, userId);
+        
+        // Delete all related ProfileLessonStatus records directly by profile ID
+        plsRepo.deleteAllByProfileId(profileId);
+        
+        // Delete all related ProfileProgress records directly by profile ID
+        profileProgressRepo.deleteAllByProfileId(profileId);
+        
+        // Finally, delete the profile itself
         profileRepo.delete(profile);
     }
 }
