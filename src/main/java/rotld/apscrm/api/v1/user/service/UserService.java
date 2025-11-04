@@ -10,6 +10,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rotld.apscrm.api.v1.auth.repository.RefreshTokenRepository;
+import rotld.apscrm.api.v1.logopedy.repository.ProfileLessonStatusRepo;
+import rotld.apscrm.api.v1.logopedy.repository.ProfileProgressRepo;
+import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
@@ -21,6 +25,10 @@ import java.util.*;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final ProfileRepo profileRepo;
+    private final ProfileLessonStatusRepo profileLessonStatusRepo;
+    private final ProfileProgressRepo profileProgressRepo;
 
     public List<User> allUsers() {
         return userRepository.findAll();
@@ -95,6 +103,30 @@ public class UserService {
 
     @Transactional
     public void delete(UUID id) {
-        if (userRepository.hardDelete(id.toString()) == 0) throw new IllegalArgumentException("User not found: " + id);
+        String userId = id.toString();
+        
+        // Check if user exists
+        if (!userRepository.existsById(userId)) {
+            throw new IllegalArgumentException("User not found: " + id);
+        }
+        
+        // Delete refresh tokens for this user
+        refreshTokenRepository.deleteByUserId(userId);
+        
+        // Delete all profiles for this user (and their related data)
+        var profiles = profileRepo.findAllByUserId(userId);
+        for (var profile : profiles) {
+            // Delete profile lesson status records
+            profileLessonStatusRepo.deleteAllByProfileId(profile.getId());
+            // Delete profile progress records
+            profileProgressRepo.deleteAllByProfileId(profile.getId());
+            // Delete the profile itself
+            profileRepo.delete(profile);
+        }
+        
+        // Finally, delete the user
+        if (userRepository.hardDelete(userId) == 0) {
+            throw new IllegalArgumentException("User not found: " + id);
+        }
     }
 }
