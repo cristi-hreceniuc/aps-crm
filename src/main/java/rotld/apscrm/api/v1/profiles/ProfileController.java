@@ -1,6 +1,7 @@
 package rotld.apscrm.api.v1.profiles;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rotld.apscrm.api.v1.profiles.dto.LessonProgressDTO;
 import rotld.apscrm.api.v1.profiles.dto.ProfileCardDTO;
@@ -35,5 +36,11 @@ public class ProfileController {
     @GetMapping("/{profileId}/lessons-progress")
     public List<LessonProgressDTO> lessonProgress(@PathVariable Long profileId) {
         return profileService.lessonProgress(profileId, SecurityUtils.currentUserId());
+    }
+
+    @DeleteMapping("/{profileId}")
+    public ResponseEntity<Void> delete(@PathVariable Long profileId) {
+        profileService.delete(profileId, SecurityUtils.currentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -87,4 +87,10 @@ public class ProfileService {
         }
         return list;
     }
+
+    @Transactional
+    public void delete(Long profileId, String userId) {
+        Profile profile = requireOwnedProfile(profileId, userId);
+        profileRepo.delete(profile);
+    }
 }
