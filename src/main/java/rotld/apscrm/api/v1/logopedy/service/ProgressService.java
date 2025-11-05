@@ -120,12 +120,15 @@ public class ProgressService {
                     if (midx >= 0 && midx + 1 < mods.size()) {
                         var nm = mods.get(midx + 1);
                         nextModId = nm.getId();
-                        var nsub = submoduleRepo.findByModuleIdOrderByPositionAsc(nm.getId()).get(0);
-                        nextSubId = nsub.getId();
-                        var nsubLessons = lessonRepo.findBySubmoduleOrdered(nsub.getId());
-                        if (!nsubLessons.isEmpty()) {
-                            nextLessonId = nsubLessons.get(0).getId();
-                            nextScreen = 0;
+                        var nextSubs = submoduleRepo.findByModuleIdOrderByPositionAsc(nm.getId());
+                        if (!nextSubs.isEmpty()) {
+                            var nsub = nextSubs.get(0);
+                            nextSubId = nsub.getId();
+                            var nsubLessons = lessonRepo.findBySubmoduleOrdered(nsub.getId());
+                            if (!nsubLessons.isEmpty()) {
+                                nextLessonId = nsubLessons.get(0).getId();
+                                nextScreen = 0;
+                            }
                         }
                     }
                 }
