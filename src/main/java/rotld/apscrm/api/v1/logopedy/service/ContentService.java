@@ -14,6 +14,7 @@ import rotld.apscrm.api.v1.logopedy.dto.*;
 import rotld.apscrm.api.v1.logopedy.entities.*;
 import rotld.apscrm.api.v1.logopedy.entities.Module;
 import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
+import rotld.apscrm.api.v1.logopedy.enums.TargetAudience;
 import rotld.apscrm.api.v1.logopedy.repository.*;
 import rotld.apscrm.exception.PremiumRequiredException;
 
@@ -49,12 +50,26 @@ public class ContentService {
         }
     }
 
-    public List<ModuleDTO> listModules(Long profileId, String userId) {
+    public List<ModuleDTO> listModules(Long profileId, String userId, String targetAudienceParam) {
         Profile p = requireProfile(profileId, userId);
-        return moduleRepo.findAllByIsActiveTrueOrderByPositionAsc()
-                .stream()
+        
+        // Get all active modules
+        var modules = moduleRepo.findAllByIsActiveTrueOrderByPositionAsc().stream();
+        
+        // Filter by targetAudience if provided
+        if (targetAudienceParam != null && !targetAudienceParam.isBlank()) {
+            try {
+                TargetAudience targetAudience = TargetAudience.valueOf(targetAudienceParam.toUpperCase());
+                modules = modules.filter(m -> m.getTargetAudience() == targetAudience);
+            } catch (IllegalArgumentException e) {
+                // Invalid targetAudience value, ignore and return all modules
+            }
+        }
+        
+        return modules
                 .map(m -> new ModuleDTO(
-                        m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), null))
+                        m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
+                        m.getTargetAudience(), null))
                 .toList();
     }
 
@@ -67,7 +82,8 @@ public class ContentService {
                 .stream().map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), null))
                 .toList();
 
-        return new ModuleDTO(m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), subs);
+        return new ModuleDTO(m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
+                m.getTargetAudience(), subs);
     }
 
     public SubmoduleListDTO getSubmodule(Long profileId, String userId, Long submoduleId) {

@@ -5,5 +5,6 @@ public record RegisterUserDto(
         String password,
         String firstName,
         String lastName,
-        String gender
+        String gender,
+        UserRole userRole
 ) {}

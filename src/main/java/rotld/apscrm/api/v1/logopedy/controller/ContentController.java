@@ -17,8 +17,10 @@ public class ContentController {
 
     // userId îl iei din JWT; aici îl primim pentru simplitate
     @GetMapping("/profiles/{profileId}/modules")
-    public List<ModuleDTO> listModules(@PathVariable Long profileId) {
-        return contentService.listModules(profileId, SecurityUtils.currentUserId());
+    public List<ModuleDTO> listModules(
+            @PathVariable Long profileId,
+            @RequestParam(required = false) String targetAudience) {
+        return contentService.listModules(profileId, SecurityUtils.currentUserId(), targetAudience);
     }
 
     @GetMapping("/profiles/{profileId}/modules/{moduleId}")

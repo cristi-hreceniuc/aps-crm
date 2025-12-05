@@ -32,13 +32,35 @@ public class AuthenticationController {
     public LoginResponse authenticate(@RequestBody LoginUserDto loginUserDto) {
         User authenticatedUser = authenticationService.authenticate(loginUserDto);
 
+        // Platform-based role restrictions
+        String platform = loginUserDto.platform() != null ? loginUserDto.platform().toUpperCase() : "MOBILE";
+        UserRole userRole = authenticatedUser.getUserRole();
+
+        if ("MOBILE".equals(platform)) {
+            // Mobile app: only USER, SPECIALIST, or PREMIUM allowed
+            if (userRole != UserRole.USER &&
+                userRole != UserRole.SPECIALIST &&
+                userRole != UserRole.PREMIUM) {
+                throw new IllegalStateException("This account type can only access the web interface. Please use the web application.");
+            }
+        } else if ("WEB".equals(platform)) {
+            // Web app: only ADMIN or VOLUNTEER allowed
+            if (userRole != UserRole.ADMIN &&
+                userRole != UserRole.VOLUNTEER) {
+                throw new IllegalStateException("This account type can only access the mobile app. Please use the mobile application.");
+            }
+        }
+
         String jwtToken = jwtService.generateToken(authenticatedUser);
         var t = authenticationService.issueTokens(authenticatedUser);
 
         return LoginResponse.builder()
                 .token(jwtToken)
                 .expiresIn(jwtService.getExpirationTime())
-                .user(new UserProfileDto(authenticatedUser.getFirstName() + " " + authenticatedUser.getLastName(), authenticatedUser.getEmail()))
+                .user(new UserProfileDto(
+                        authenticatedUser.getFirstName() + " " + authenticatedUser.getLastName(),
+                        authenticatedUser.getEmail(),
+                        authenticatedUser.getUserRole()))
                 .refreshToken(t.refresh())
                 .refreshExpiresIn(t.refreshExpMs())
                 .build();

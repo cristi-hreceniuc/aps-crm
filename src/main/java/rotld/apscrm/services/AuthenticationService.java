@@ -54,13 +54,19 @@ public class AuthenticationService {
             throw new DuplicateEmailException(input.email());
         }
 
+        // Validate role - only USER, SPECIALIST, or PREMIUM allowed for registration
+        UserRole role = input.userRole() != null ? input.userRole() : UserRole.USER;
+        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.PREMIUM) {
+            throw new IllegalArgumentException("Invalid user role. Only USER, SPECIALIST, or PREMIUM roles are allowed.");
+        }
+
         User user = User.builder()
                 .lastName(input.lastName())
                 .firstName(input.firstName())
                 .gender(input.gender())
                 .email(input.email())
                 .password(passwordEncoder.encode(input.password()))
-                .userRole(UserRole.USER)
+                .userRole(role)
                 .userStatus(UserStatus.PENDING)
                 .build();
 
