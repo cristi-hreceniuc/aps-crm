@@ -36,6 +36,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 
+    // AWS SDK for S3
+    implementation(platform("software.amazon.awssdk:bom:2.20.0"))
+    implementation("software.amazon.awssdk:s3")
+
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }

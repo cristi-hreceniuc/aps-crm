@@ -57,3 +57,12 @@ app:
     ttl-minutes: 15
     max-attempts: 5
     lockout-minutes: 15
+
+# AWS S3 Configuration for private asset storage
+aws:
+  s3:
+    bucket-name: logopedy-assets
+    region: eu-north-1
+    access-key: YOUR_AWS_ACCESS_KEY
+    secret-key: YOUR_AWS_SECRET_KEY
+    presigned-url-expiration-minutes: 60  # Pre-signed URLs valid for 60 minutes

@@ -35,7 +35,8 @@ public class ContentService {
     private final LessonScreenRepo screenRepo;
     private final ProfileRepo profileRepo;
     private final ProfileLessonStatusRepo profileLessonStatusRepo;
-    private final AssetRepo assetRepo;                 // <— adaugă
+    private final AssetRepo assetRepo;
+    private final S3Service s3Service;
 
     private final com.fasterxml.jackson.databind.ObjectMapper om;
 
@@ -163,7 +164,8 @@ public class ContentService {
     }
 
     /** Transformă assetId în { uri, kind, mime }.
-     *  Pentru Flutter assets locale, scoatem prefixul "app://" și returnăm calea din pubspec.
+     *  Pentru Flutter assets locale, scoatem prefixul "app://".
+     *  Pentru S3 assets, generăm pre-signed URLs pentru acces securizat.
      */
     private JsonNode assetNodeFor(long id) {
         var a = assetRepo.findById(id).orElse(null);
@@ -174,12 +176,20 @@ public class ContentService {
             out.put("mime", "");
             return out;
         }
-        String uri = a.getUri(); // ex: app://assets/images/soare.png
+        
+        String uri = a.getUri(); // ex: app://assets/images/soare.png OR modules/1/submodules/1/lessons/1/image.jpg
+        
+        // Handle local app assets
         if (uri.startsWith("app://")) {
             uri = uri.substring("app://".length()); // -> assets/images/soare.png
         }
+        // Handle S3 assets - generate pre-signed URL
+        else if (s3Service.isS3Key(uri)) {
+            uri = s3Service.generatePresignedUrl(uri);
+        }
+        
         out.put("uri", uri);
-        out.put("kind", a.getKind().name());   // IMAGE / AUDIO, etc (dacă e enum; altfel a.getKind())
+        out.put("kind", a.getKind().name());   // IMAGE / AUDIO, etc
         out.put("mime", a.getMime());
         return out;
     }
