@@ -146,9 +146,28 @@ public class ContentService {
                 return assetNodeFor(id); // înlocuim tot obiectul cu {uri, kind, mime}
             }
 
-            // Recursiv pe copii
+            // Recursiv pe copii, dar verifică și câmpurile S3
             ObjectNode out = om.createObjectNode();
-            obj.fields().forEachRemaining(e -> out.set(e.getKey(), resolveAssets(e.getValue())));
+            obj.fields().forEachRemaining(e -> {
+                String key = e.getKey();
+                JsonNode value = e.getValue();
+                
+                // Verifică dacă este un câmp S3 key (s3Key, s3AudioKey, s3ImageKey, etc.)
+                if ((key.equals("s3Key") || key.equals("s3AudioKey") || key.equals("s3ImageKey")) 
+                    && value.isTextual()) {
+                    String s3Path = value.asText();
+                    // Generează presigned URL dacă este un S3 key valid
+                    if (s3Service.isS3Key(s3Path)) {
+                        String presignedUrl = s3Service.generatePresignedUrl(s3Path);
+                        out.put(key, presignedUrl);
+                    } else {
+                        out.set(key, value);
+                    }
+                } else {
+                    // Rezolvă recursiv pentru alte câmpuri
+                    out.set(key, resolveAssets(value));
+                }
+            });
             return out;
         }
 
