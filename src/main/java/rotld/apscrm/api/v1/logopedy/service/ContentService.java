@@ -152,9 +152,11 @@ public class ContentService {
                 String key = e.getKey();
                 JsonNode value = e.getValue();
                 
-                // Verifică dacă este un câmp S3 key (s3Key, s3AudioKey, s3ImageKey, etc.)
-                if ((key.equals("s3Key") || key.equals("s3AudioKey") || key.equals("s3ImageKey")) 
-                    && value.isTextual()) {
+                // Verifică dacă este un câmp S3 key (orice câmp care conține "s3" și "Key" sau începe cu "s3")
+                // Acceptă: s3Key, s3AudioKey, s3ImageKey, s3AudioQuestionKey, etc.
+                boolean isS3KeyField = (key.startsWith("s3") || key.contains("s3Key")) && value.isTextual();
+                
+                if (isS3KeyField) {
                     String s3Path = value.asText();
                     // Generează presigned URL dacă este un S3 key valid
                     if (s3Service.isS3Key(s3Path)) {
