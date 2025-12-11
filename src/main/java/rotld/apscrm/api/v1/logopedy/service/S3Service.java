@@ -85,21 +85,53 @@ public class S3Service {
             }
             
             // First, check if the object exists in S3
+            // Try both NFC and NFD forms due to Unicode normalization issues
+            String workingKey = cleanKey;
+            boolean objectExists = false;
+            
             try {
                 HeadObjectRequest headRequest = HeadObjectRequest.builder()
                         .bucket(bucketName)
                         .key(cleanKey)
                         .build();
                 s3Client.headObject(headRequest);
-                log.info("✅ S3 object EXISTS: {}", cleanKey);
+                log.info("✅ S3 object EXISTS with NFC form: {}", cleanKey);
+                objectExists = true;
             } catch (NoSuchKeyException e) {
-                log.error("❌ S3 object DOES NOT EXIST: {} - Cannot generate presigned URL", cleanKey);
-                log.error("   Please upload this file to S3 with the exact name: {}", cleanKey);
-                return ""; // Return empty URL if object doesn't exist
+                // Try NFD form (decomposed diacritics)
+                String nfdKey = java.text.Normalizer.normalize(cleanKey, java.text.Normalizer.Form.NFD);
+                if (!nfdKey.equals(cleanKey)) {
+                    log.info("Trying NFD form: {} (bytes: {})", 
+                            nfdKey, 
+                            java.util.Arrays.toString(nfdKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                    try {
+                        HeadObjectRequest nfdRequest = HeadObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(nfdKey)
+                                .build();
+                        s3Client.headObject(nfdRequest);
+                        log.info("✅ S3 object EXISTS with NFD form: {}", nfdKey);
+                        workingKey = nfdKey;
+                        objectExists = true;
+                    } catch (NoSuchKeyException e2) {
+                        log.error("❌ S3 object DOES NOT EXIST in either NFC or NFD form: {}", cleanKey);
+                        log.error("   NFC tried: {}", cleanKey);
+                        log.error("   NFD tried: {}", nfdKey);
+                        log.error("   Please verify the exact filename in S3");
+                        return "";
+                    }
+                } else {
+                    log.error("❌ S3 object DOES NOT EXIST: {}", cleanKey);
+                    log.error("   Please upload this file to S3 with the exact name: {}", cleanKey);
+                    return "";
+                }
             } catch (Exception e) {
                 log.warn("⚠️  Could not verify S3 object existence for key: {} - {}", cleanKey, e.getMessage());
                 // Continue anyway and let presigned URL generation handle it
             }
+            
+            // Use the working key (whichever form exists in S3)
+            cleanKey = workingKey;
             
             // AWS SDK v2 should handle UTF-8 encoding automatically
             // The key should be passed as-is (unencoded) to the SDK
