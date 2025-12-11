@@ -73,16 +73,21 @@ public class S3Service {
             // This ensures diacritics are in composed form (e.g., ș as single character, not s + combining diacritic)
             cleanKey = java.text.Normalizer.normalize(cleanKey, java.text.Normalizer.Form.NFC);
             
-            // Log the original key for debugging
-            log.info("Generating presigned URL for S3 key: {} (bytes: {})", 
-                    cleanKey, 
+            // Log the original key for debugging with detailed character analysis
+            StringBuilder charDebug = new StringBuilder();
+            for (int i = 0; i < cleanKey.length(); i++) {
+                char c = cleanKey.charAt(i);
+                if (c > 127) { // Non-ASCII
+                    charDebug.append(String.format("'%c'=U+%04X ", c, (int)c));
+                }
+            }
+            log.info("Generating presigned URL for S3 key: {}", cleanKey);
+            if (charDebug.length() > 0) {
+                log.info("  Non-ASCII chars: {}", charDebug.toString());
+            }
+            log.info("  UTF-8 bytes: {}", 
                     java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             
-            // Check if key contains non-ASCII characters (diacritics)
-            boolean hasNonAscii = !cleanKey.matches("^[\\x00-\\x7F]*$");
-            if (hasNonAscii) {
-                log.info("S3 key contains non-ASCII characters (diacritics): {}", cleanKey);
-            }
             
             // First, check if the object exists in S3
             // Try multiple Unicode forms due to Romanian diacritic issues
@@ -189,7 +194,9 @@ public class S3Service {
 
             // Log the generated URL (truncate for readability)
             String urlPreview = url.length() > 150 ? url.substring(0, 150) + "..." : url;
-            log.info("Generated presigned URL for key '{}': {}", cleanKey, urlPreview);
+            log.info("✅ Successfully generated presigned URL");
+            log.info("  Final key used: {}", cleanKey);
+            log.info("  URL preview: {}", urlPreview);
             
             // Verify the URL is properly formed
             if (url.isEmpty() || !url.startsWith("http")) {
