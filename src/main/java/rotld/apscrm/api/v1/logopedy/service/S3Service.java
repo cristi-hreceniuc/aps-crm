@@ -89,92 +89,65 @@ public class S3Service {
                     java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             
             
-            // First, check if the object exists in S3
-            // Try multiple Unicode forms due to Romanian diacritic issues
+            // Try to find the correct Unicode form for Romanian diacritics
+            // ș/ț have two forms: comma below (correct) vs cedilla (wrong but common)
             String workingKey = cleanKey;
-            boolean objectExists = false;
             
-            // Try original key first
-            try {
-                HeadObjectRequest headRequest = HeadObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(cleanKey)
-                        .build();
-                s3Client.headObject(headRequest);
-                log.info("✅ S3 object EXISTS with original form: {}", cleanKey);
-                objectExists = true;
-            } catch (NoSuchKeyException e) {
-                log.warn("Original key not found, trying alternatives...");
+            // Check if file contains ș or ț (or their cedilla variants)
+            boolean hasTsChars = cleanKey.matches(".*[șțşţ].*");
+            
+            if (hasTsChars) {
+                log.info("Key contains ș/ț characters, will try alternate forms if needed");
                 
-                // Try with cedilla variants (wrong but common)
-                // ș (comma U+0219) ↔ ş (cedilla U+015F)
-                // ț (comma U+021B) ↔ ţ (cedilla U+0163)
+                // Generate alternate forms
                 String cedillaKey = cleanKey
                         .replace('\u0219', '\u015F')  // ș → ş
                         .replace('\u021B', '\u0163'); // ț → ţ
                 
-                if (!cedillaKey.equals(cleanKey)) {
-                    log.info("Trying cedilla form: {} (bytes: {})", 
-                            cedillaKey, 
-                            java.util.Arrays.toString(cedillaKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                    try {
-                        HeadObjectRequest cedillaRequest = HeadObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(cedillaKey)
-                                .build();
-                        s3Client.headObject(cedillaRequest);
-                        log.info("✅ S3 object EXISTS with CEDILLA form: {}", cedillaKey);
-                        workingKey = cedillaKey;
-                        objectExists = true;
-                    } catch (NoSuchKeyException e2) {
-                        // Still not found
-                    }
-                }
+                String commaKey = cleanKey
+                        .replace('\u015F', '\u0219')  // ş → ș
+                        .replace('\u0163', '\u021B'); // ţ → ț
                 
-                // If still not found, try comma variants (correct but might not match)
-                if (!objectExists) {
-                    String commaKey = cleanKey
-                            .replace('\u015F', '\u0219')  // ş → ș
-                            .replace('\u0163', '\u021B'); // ţ → ț
-                    
-                    if (!commaKey.equals(cleanKey) && !commaKey.equals(cedillaKey)) {
-                        log.info("Trying comma form: {} (bytes: {})", 
-                                commaKey, 
-                                java.util.Arrays.toString(commaKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                // Try to find which form exists (don't fail, just log)
+                try {
+                    HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(cleanKey)
+                            .build();
+                    s3Client.headObject(headRequest);
+                    log.info("✅ Found with original form: {}", cleanKey);
+                } catch (NoSuchKeyException e) {
+                    // Try cedilla
+                    if (!cedillaKey.equals(cleanKey)) {
                         try {
-                            HeadObjectRequest commaRequest = HeadObjectRequest.builder()
+                            s3Client.headObject(HeadObjectRequest.builder()
                                     .bucket(bucketName)
-                                    .key(commaKey)
-                                    .build();
-                            s3Client.headObject(commaRequest);
-                            log.info("✅ S3 object EXISTS with COMMA form: {}", commaKey);
-                            workingKey = commaKey;
-                            objectExists = true;
-                        } catch (NoSuchKeyException e3) {
-                            // Still not found
+                                    .key(cedillaKey)
+                                    .build());
+                            log.info("✅ Found with CEDILLA form, using: {}", cedillaKey);
+                            workingKey = cedillaKey;
+                        } catch (NoSuchKeyException e2) {
+                            // Try comma
+                            if (!commaKey.equals(cleanKey)) {
+                                try {
+                                    s3Client.headObject(HeadObjectRequest.builder()
+                                            .bucket(bucketName)
+                                            .key(commaKey)
+                                            .build());
+                                    log.info("✅ Found with COMMA form, using: {}", commaKey);
+                                    workingKey = commaKey;
+                                } catch (NoSuchKeyException e3) {
+                                    log.warn("⚠️  Could not find file in any Unicode form, will try original");
+                                }
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    log.warn("⚠️  Error checking object existence: {}", e.getMessage());
                 }
-                
-                if (!objectExists) {
-                    log.error("❌ S3 object DOES NOT EXIST in any form: {}", cleanKey);
-                    log.error("   Original tried: {} (bytes: {})", 
-                            cleanKey, 
-                            java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                    if (!cedillaKey.equals(cleanKey)) {
-                        log.error("   Cedilla tried: {} (bytes: {})", 
-                                cedillaKey, 
-                                java.util.Arrays.toString(cedillaKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                    }
-                    log.error("   Please verify the exact filename in S3");
-                    return "";
-                }
-            } catch (Exception e) {
-                log.warn("⚠️  Could not verify S3 object existence for key: {} - {}", cleanKey, e.getMessage());
-                // Continue anyway and let presigned URL generation handle it
             }
             
-            // Use the working key (whichever form exists in S3)
+            // Use the working key
             cleanKey = workingKey;
             
             // AWS SDK v2 should handle UTF-8 encoding automatically
