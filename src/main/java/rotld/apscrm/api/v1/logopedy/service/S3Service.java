@@ -89,26 +89,8 @@ public class S3Service {
                     java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             
             
-            // For ș and ț, the file in S3 is likely stored with CEDILLA (wrong but common)
-            // Database has COMMA BELOW (correct). Need to convert.
-            boolean hasStChars = cleanKey.contains("ș") || cleanKey.contains("ț");
-            
-            if (hasStChars) {
-                // Convert comma below → cedilla for S3
-                String cedillaKey = cleanKey
-                        .replace('ș', 'ş')  // U+0219 → U+015F
-                        .replace('ț', 'ţ'); // U+021B → U+0163
-                
-                log.info("Key has ș/ț, converting to cedilla form for S3");
-                log.info("  Original (comma): {} bytes: {}", 
-                        cleanKey,
-                        java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                log.info("  Cedilla form: {} bytes: {}", 
-                        cedillaKey,
-                        java.util.Arrays.toString(cedillaKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                
-                cleanKey = cedillaKey;
-            }
+            // Use the key as-is from database (already NFC normalized above)
+            // AWS SDK will handle URL encoding correctly
             
             // AWS SDK v2 should handle UTF-8 encoding automatically
             // The key should be passed as-is (unencoded) to the SDK
