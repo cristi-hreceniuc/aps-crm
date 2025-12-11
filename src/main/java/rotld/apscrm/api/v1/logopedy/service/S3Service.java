@@ -89,73 +89,26 @@ public class S3Service {
                     java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             
             
-            // Try to find the correct Unicode form
-            // Romanian diacritics have multiple encoding issues:
-            // 1. ș/ț: comma below vs cedilla (visually identical!)
-            // 2. All diacritics: NFC vs NFD normalization
-            String workingKey = cleanKey;
-            boolean hasDiacritics = !cleanKey.matches("^[\\x00-\\x7F]*$");
+            // For ș and ț, the file in S3 is likely stored with CEDILLA (wrong but common)
+            // Database has COMMA BELOW (correct). Need to convert.
+            boolean hasStChars = cleanKey.contains("ș") || cleanKey.contains("ț");
             
-            if (hasDiacritics) {
-                log.info("Key has diacritics, will try alternate forms");
+            if (hasStChars) {
+                // Convert comma below → cedilla for S3
+                String cedillaKey = cleanKey
+                        .replace('ș', 'ş')  // U+0219 → U+015F
+                        .replace('ț', 'ţ'); // U+021B → U+0163
                 
-                // Try original first
-                try {
-                    s3Client.headObject(HeadObjectRequest.builder()
-                            .bucket(bucketName)
-                            .key(cleanKey)
-                            .build());
-                    log.info("✅ Found with original form");
-                } catch (NoSuchKeyException e) {
-                    // Try NFD (decomposed) form
-                    String nfdKey = java.text.Normalizer.normalize(cleanKey, java.text.Normalizer.Form.NFD);
-                    if (!nfdKey.equals(cleanKey)) {
-                        try {
-                            s3Client.headObject(HeadObjectRequest.builder()
-                                    .bucket(bucketName)
-                                    .key(nfdKey)
-                                    .build());
-                            log.info("✅ Found with NFD form");
-                            workingKey = nfdKey;
-                        } catch (NoSuchKeyException e2) {
-                            // Try cedilla variants
-                            String cedillaKey = cleanKey
-                                    .replace('\u0219', '\u015F')  // ș → ş
-                                    .replace('\u021B', '\u0163'); // ț → ţ
-                            
-                            if (!cedillaKey.equals(cleanKey)) {
-                                try {
-                                    s3Client.headObject(HeadObjectRequest.builder()
-                                            .bucket(bucketName)
-                                            .key(cedillaKey)
-                                            .build());
-                                    log.info("✅ Found with CEDILLA form");
-                                    workingKey = cedillaKey;
-                                } catch (NoSuchKeyException e3) {
-                                    // Try cedilla + NFD
-                                    String cedillaNfd = java.text.Normalizer.normalize(cedillaKey, java.text.Normalizer.Form.NFD);
-                                    if (!cedillaNfd.equals(cedillaKey)) {
-                                        try {
-                                            s3Client.headObject(HeadObjectRequest.builder()
-                                                    .bucket(bucketName)
-                                                    .key(cedillaNfd)
-                                                    .build());
-                                            log.info("✅ Found with CEDILLA+NFD form");
-                                            workingKey = cedillaNfd;
-                                        } catch (NoSuchKeyException e4) {
-                                            log.warn("⚠️  Tried all forms, will use original");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    log.warn("⚠️  Error checking: {}", e.getMessage());
-                }
+                log.info("Key has ș/ț, converting to cedilla form for S3");
+                log.info("  Original (comma): {} bytes: {}", 
+                        cleanKey,
+                        java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                log.info("  Cedilla form: {} bytes: {}", 
+                        cedillaKey,
+                        java.util.Arrays.toString(cedillaKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                
+                cleanKey = cedillaKey;
             }
-            
-            cleanKey = workingKey;
             
             // AWS SDK v2 should handle UTF-8 encoding automatically
             // The key should be passed as-is (unencoded) to the SDK
