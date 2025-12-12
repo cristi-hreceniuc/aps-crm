@@ -60,6 +60,27 @@ public class ProfileService {
                 }).toList();
     }
 
+    public ProfileCardDTO getProfileDetails(Long profileId, String userId) {
+        Profile p = requireOwnedProfile(profileId, userId);
+        User user = p.getUser();
+        
+        long totalLessons = lessonRepo.countActive();
+        long done = plsRepo.completedCount(p.getId());
+        int percent = totalLessons == 0 ? 0 : (int)Math.round(done * 100.0 / totalLessons);
+        
+        // Convert S3 key to presigned URL if it exists
+        String avatarUrl = p.getAvatarUri();
+        if (avatarUrl != null && !avatarUrl.isEmpty() && s3Service.isS3Key(avatarUrl)) {
+            avatarUrl = s3Service.generatePresignedUrl(avatarUrl);
+        }
+        
+        return new ProfileCardDTO(
+                p.getId(), p.getName(), avatarUrl,
+                user.getIsPremium(), percent, done, totalLessons,
+                p.getBirthday(), p.getGender()
+        );
+    }
+
     @Transactional
     public ProfileCardDTO createForUser(User user, String name, String avatarUri, LocalDate birthday, String gender) {
         Profile p = new Profile();

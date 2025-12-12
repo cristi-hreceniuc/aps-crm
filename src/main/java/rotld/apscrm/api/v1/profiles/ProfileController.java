@@ -34,6 +34,12 @@ public class ProfileController {
         return profileService.listForUser(user);
     }
 
+    @GetMapping("/{profileId}")
+    public ProfileCardDTO getProfileDetails(@PathVariable Long profileId) {
+        User user = userRepo.findById(SecurityUtils.currentUserId()).orElseThrow();
+        return profileService.getProfileDetails(profileId, user.getId());
+    }
+
     @PostMapping
     public ProfileCardDTO create(@RequestBody ProfileCreateReq req) {
         User user = userRepo.findById(SecurityUtils.currentUserId()).orElseThrow();
