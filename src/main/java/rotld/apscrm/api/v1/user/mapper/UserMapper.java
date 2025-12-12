@@ -20,6 +20,7 @@ public class UserMapper {
                 .role(user.getUserRole())
                 .status(user.getUserStatus())
                 .isPremium(user.getIsPremium())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 

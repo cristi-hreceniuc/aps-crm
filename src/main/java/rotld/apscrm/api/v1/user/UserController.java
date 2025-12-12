@@ -7,11 +7,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.service.UserService;
+import rotld.apscrm.common.SecurityUtils;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,5 +60,18 @@ public class UserController {
     public ResponseEntity<Void> delete(@PathVariable UUID id){
         userService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/profile-image")
+    public ResponseEntity<Map<String, String>> uploadProfileImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String userId = SecurityUtils.currentUserId();
+            String s3Key = userService.uploadProfileImage(userId, file);
+            return ResponseEntity.ok(Map.of("s3Key", s3Key, "message", "Profile image uploaded successfully"));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to upload file: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

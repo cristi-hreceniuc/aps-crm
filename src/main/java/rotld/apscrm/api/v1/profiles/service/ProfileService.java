@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import rotld.apscrm.api.v1.logopedy.entities.Lesson;
 import rotld.apscrm.api.v1.logopedy.entities.Profile;
 import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
@@ -11,10 +12,12 @@ import rotld.apscrm.api.v1.logopedy.repository.LessonRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileLessonStatusRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileProgressRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
+import rotld.apscrm.api.v1.logopedy.service.S3Service;
 import rotld.apscrm.api.v1.profiles.dto.LessonProgressDTO;
 import rotld.apscrm.api.v1.profiles.dto.ProfileCardDTO;
 import rotld.apscrm.api.v1.user.repository.User;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +31,7 @@ public class ProfileService {
     private final LessonRepo lessonRepo;
     private final ProfileLessonStatusRepo plsRepo;
     private final ProfileProgressRepo profileProgressRepo;
+    private final S3Service s3Service;
 
     private Profile requireOwnedProfile(Long profileId, String userId) {
         return profileRepo.findByIdAndUserId(profileId, userId)
@@ -102,5 +106,44 @@ public class ProfileService {
         
         // Finally, delete the profile itself
         profileRepo.delete(profile);
+    }
+
+    @Transactional
+    public String uploadProfileAvatar(Long profileId, String userId, MultipartFile file) throws IOException {
+        // Validate file
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        // Validate file type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image");
+        }
+
+        // Validate file size (max 5MB)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("File size must be less than 5MB");
+        }
+
+        // Check ownership
+        Profile profile = requireOwnedProfile(profileId, userId);
+
+        // Upload to S3
+        String s3Key = s3Service.uploadFile(
+                file.getInputStream(),
+                contentType,
+                file.getSize(),
+                "profile-avatars",
+                file.getOriginalFilename()
+        );
+
+        // Update profile record
+        profile.setAvatarUri(s3Key);
+        profileRepo.save(profile);
+
+        // Return the S3 key
+        return s3Key;
     }
 }

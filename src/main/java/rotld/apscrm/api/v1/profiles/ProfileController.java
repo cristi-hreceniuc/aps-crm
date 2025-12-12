@@ -3,6 +3,7 @@ package rotld.apscrm.api.v1.profiles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import rotld.apscrm.api.v1.profiles.dto.LessonProgressDTO;
 import rotld.apscrm.api.v1.profiles.dto.ProfileCardDTO;
 import rotld.apscrm.api.v1.profiles.dto.ProfileCreateReq;
@@ -11,11 +12,13 @@ import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
 import rotld.apscrm.common.SecurityUtils;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profiles")
@@ -94,5 +97,20 @@ public class ProfileController {
     public ResponseEntity<Void> delete(@PathVariable Long profileId) {
         profileService.delete(profileId, SecurityUtils.currentUserId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{profileId}/avatar")
+    public ResponseEntity<Map<String, String>> uploadAvatar(
+            @PathVariable Long profileId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String userId = SecurityUtils.currentUserId();
+            String s3Key = profileService.uploadProfileAvatar(profileId, userId, file);
+            return ResponseEntity.ok(Map.of("s3Key", s3Key, "message", "Avatar uploaded successfully"));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to upload file: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

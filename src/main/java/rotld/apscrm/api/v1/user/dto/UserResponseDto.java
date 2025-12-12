@@ -17,6 +17,7 @@ public record UserResponseDto (
         String gender,
         UserRole role,
         UserStatus status,
-        Boolean isPremium
+        Boolean isPremium,
+        String profileImageUrl
 ){
 }

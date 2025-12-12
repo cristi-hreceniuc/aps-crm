@@ -72,6 +72,9 @@ public class User implements UserDetails {
     @Column(name="is_premium")
     private Boolean isPremium;
 
+    @Column(name="profile_image_url")
+    private String profileImageUrl;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(userRole.toString()));

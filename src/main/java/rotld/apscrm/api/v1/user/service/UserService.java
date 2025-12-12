@@ -10,15 +10,18 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import rotld.apscrm.api.v1.auth.repository.RefreshTokenRepository;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileLessonStatusRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileProgressRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
+import rotld.apscrm.api.v1.logopedy.service.S3Service;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
 
+import java.io.IOException;
 import java.util.*;
 
 @Service
@@ -29,6 +32,7 @@ public class UserService {
     private final ProfileRepo profileRepo;
     private final ProfileLessonStatusRepo profileLessonStatusRepo;
     private final ProfileProgressRepo profileProgressRepo;
+    private final S3Service s3Service;
 
     public List<User> allUsers() {
         return userRepository.findAll();
@@ -128,5 +132,43 @@ public class UserService {
         if (userRepository.hardDelete(userId) == 0) {
             throw new IllegalArgumentException("User not found: " + id);
         }
+    }
+
+    @Transactional
+    public String uploadProfileImage(String userId, MultipartFile file) throws IOException {
+        // Validate file
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        // Validate file type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image");
+        }
+
+        // Validate file size (max 5MB)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("File size must be less than 5MB");
+        }
+
+        // Upload to S3
+        String s3Key = s3Service.uploadFile(
+                file.getInputStream(),
+                contentType,
+                file.getSize(),
+                "user-profile-images",
+                file.getOriginalFilename()
+        );
+
+        // Update user record
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        user.setProfileImageUrl(s3Key);
+        userRepository.save(user);
+
+        // Return the S3 key
+        return s3Key;
     }
 }

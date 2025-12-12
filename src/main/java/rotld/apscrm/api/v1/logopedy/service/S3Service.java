@@ -5,14 +5,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.io.InputStream;
 import java.time.Duration;
+import java.util.UUID;
 
 /**
  * Service for generating pre-signed URLs for private S3 assets.
@@ -119,5 +123,69 @@ public class S3Service {
         
         // Otherwise, assume it's an S3 key
         return true;
+    }
+
+    /**
+     * Uploads a file to S3 and returns the S3 key.
+     * 
+     * @param inputStream The file input stream
+     * @param contentType The content type of the file (e.g., "image/jpeg")
+     * @param contentLength The size of the file in bytes
+     * @param folder The folder prefix in S3 (e.g., "profile-images", "user-avatars")
+     * @param filename The original filename (will be sanitized and made unique)
+     * @return The S3 key of the uploaded file
+     */
+    public String uploadFile(InputStream inputStream, String contentType, long contentLength, 
+                           String folder, String filename) {
+        try {
+            // Generate a unique filename to avoid collisions
+            String uniqueFilename = generateUniqueFilename(filename);
+            String s3Key = folder + "/" + uniqueFilename;
+            
+            log.info("Uploading file to S3: bucket={}, key={}, contentType={}, size={}", 
+                    bucketName, s3Key, contentType, contentLength);
+
+            // Create PutObjectRequest
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentType(contentType)
+                    .contentLength(contentLength)
+                    .build();
+
+            // Upload the file
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(inputStream, contentLength));
+            
+            log.info("Successfully uploaded file to S3: {}", s3Key);
+            return s3Key;
+
+        } catch (Exception e) {
+            log.error("Failed to upload file to S3: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload file to S3: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Generates a unique filename by appending a UUID before the file extension.
+     * Example: "profile.jpg" becomes "profile_abc123.jpg"
+     */
+    private String generateUniqueFilename(String originalFilename) {
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        
+        int lastDotIndex = originalFilename.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            String nameWithoutExt = originalFilename.substring(0, lastDotIndex);
+            String extension = originalFilename.substring(lastDotIndex);
+            return sanitizeFilename(nameWithoutExt) + "_" + uuid + extension;
+        } else {
+            return sanitizeFilename(originalFilename) + "_" + uuid;
+        }
+    }
+
+    /**
+     * Sanitizes a filename by removing special characters and spaces.
+     */
+    private String sanitizeFilename(String filename) {
+        return filename.replaceAll("[^a-zA-Z0-9.-]", "_");
     }
 }
