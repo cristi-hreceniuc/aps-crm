@@ -123,6 +123,7 @@ public class ContentService {
                             (int) completedLessons
                     );
                 })
+                .filter(partDTO -> partDTO.getTotalLessons() > 0)  // Only show parts with lessons
                 .toList();
 
         return new SubmoduleListDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), partDTOs);

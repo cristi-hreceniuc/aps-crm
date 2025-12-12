@@ -13,8 +13,13 @@ public enum ScreenType {
     // New types for specialist modules
     INSTRUCTIONS,              // Display scrollable text instructions
     IMAGE_SELECTION,           // Select correct image from 3 options
-    FIND_SOUND,               // Tap syllable containing specific sound
-    FIND_MISSING_LETTER,      // Type missing letter in word
-    FIND_NON_INTRUDER,        // Select 2 matching images from 3 options
-    FORMAT_WORD               // Order scrambled letters to form word
+    AUDIO_SELECTION,           // Select correct audio from options
+    SYLLABLE_SELECTION,        // Select correct syllable
+    WORD_SELECTION,            // Select correct word
+    FIND_SOUND,                // Tap syllable containing specific sound
+    FIND_SOUND_WITH_IMAGE,     // Tap syllable containing specific sound with image support
+    FIND_MISSING_LETTER,       // Type missing letter in word
+    FIND_NON_INTRUDER,         // Select 2 matching images from 3 options
+    FORMAT_WORD,               // Order scrambled letters to form word
+    REPEAT_WORD                // Show image + word, play audio, wait for user to repeat (no verification)
 }
