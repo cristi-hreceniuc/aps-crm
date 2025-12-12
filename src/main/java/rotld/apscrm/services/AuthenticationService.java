@@ -68,6 +68,7 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(input.password()))
                 .userRole(role)
                 .userStatus(UserStatus.PENDING)
+                .isPremium(Boolean.FALSE)
                 .build();
 
         return userRepository.save(user);

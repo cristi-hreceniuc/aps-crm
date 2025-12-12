@@ -32,7 +32,7 @@ public class ProfileController {
     }
 
     @PostMapping
-    public ProfileCardDTO create(@RequestBody @jakarta.validation.Valid ProfileCreateReq req) {
+    public ProfileCardDTO create(@RequestBody ProfileCreateReq req) {
         User user = userRepo.findById(SecurityUtils.currentUserId()).orElseThrow();
         LocalDate birthday = parseBirthday(req.birthday());
         return profileService.createForUser(user, req.name(), req.avatarUri(), birthday, req.gender());
