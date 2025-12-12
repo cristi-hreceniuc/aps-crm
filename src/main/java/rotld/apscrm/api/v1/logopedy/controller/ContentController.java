@@ -40,8 +40,11 @@ public class ContentController {
     }
 
     @GetMapping("/profiles/{profileId}/lessons/{lessonId}")
-    public LessonPlayDTO getLesson(@PathVariable Long profileId, @PathVariable Long lessonId) {
-        return contentService.getLesson(profileId, SecurityUtils.currentUserId(), lessonId);
+    public LessonPlayDTO getLesson(
+            @PathVariable Long profileId,
+            @PathVariable Long lessonId,
+            @RequestParam(required = false, defaultValue = "false") boolean skipAssetUrls) {
+        return contentService.getLesson(profileId, SecurityUtils.currentUserId(), lessonId, skipAssetUrls);
     }
 
     /**

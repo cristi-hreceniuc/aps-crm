@@ -129,7 +129,7 @@ public class ContentService {
         return new SubmoduleListDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), partDTOs);
     }
 
-    public LessonPlayDTO getLesson(Long profileId, String userId, Long lessonId) {
+    public LessonPlayDTO getLesson(Long profileId, String userId, Long lessonId, boolean skipAssetUrls) {
         Profile p = requireProfile(profileId, userId);
         Lesson l = lessonRepo.findById(lessonId)
                 .orElseThrow(() -> new EntityNotFoundException("Lesson with id %s not found.".formatted(lessonId)));
@@ -139,7 +139,7 @@ public class ContentService {
                 .map(sc -> new ScreenDTO(
                         sc.getId(),
                         sc.getScreenType(),
-                        parseAndResolve(sc.getPayload()),   // <— AICI!
+                        parseAndResolve(sc.getPayload(), skipAssetUrls),   // Pass skipAssetUrls flag
                         sc.getPosition()
                 ))
                 .toList();
@@ -149,17 +149,17 @@ public class ContentService {
         );
     }
 
-    private Map<String, Object> parseAndResolve(String raw) {
+    private Map<String, Object> parseAndResolve(String raw, boolean skipAssetUrls) {
         try {
             JsonNode root = om.readTree(raw);
-            JsonNode resolved = resolveAssets(root);
+            JsonNode resolved = resolveAssets(root, skipAssetUrls);
             return om.convertValue(resolved, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             return Map.of(); // fallback safe
         }
     }
 
-    private JsonNode resolveAssets(JsonNode node) {
+    private JsonNode resolveAssets(JsonNode node, boolean skipAssetUrls) {
         if (node == null) return NullNode.getInstance();
 
         // 1) Obiect: poate conține assetId sau copii cu assetId
@@ -169,7 +169,7 @@ public class ContentService {
             // Caz direct: { "assetId": 501 }
             if (obj.has("assetId") && obj.get("assetId").canConvertToLong()) {
                 long id = obj.get("assetId").asLong();
-                return assetNodeFor(id); // înlocuim tot obiectul cu {uri, kind, mime}
+                return assetNodeFor(id, skipAssetUrls); // înlocuim tot obiectul cu {uri, kind, mime}
             }
 
             // Recursiv pe copii, dar verifică și câmpurile S3
@@ -184,16 +184,22 @@ public class ContentService {
                 
                 if (isS3KeyField) {
                     String s3Path = value.asText();
-                    // Generează presigned URL dacă este un S3 key valid
-                    if (s3Service.isS3Key(s3Path)) {
-                        String presignedUrl = s3Service.generatePresignedUrl(s3Path);
-                        out.put(key, presignedUrl);
+                    
+                    if (skipAssetUrls) {
+                        // Return S3 key as-is when skipping URL generation
+                        out.put(key, s3Path);
                     } else {
-                        out.set(key, value);
+                        // Generează presigned URL dacă este un S3 key valid
+                        if (s3Service.isS3Key(s3Path)) {
+                            String presignedUrl = s3Service.generatePresignedUrl(s3Path);
+                            out.put(key, presignedUrl);
+                        } else {
+                            out.set(key, value);
+                        }
                     }
                 } else {
                     // Rezolvă recursiv pentru alte câmpuri
-                    out.set(key, resolveAssets(value));
+                    out.set(key, resolveAssets(value, skipAssetUrls));
                 }
             });
             return out;
@@ -202,7 +208,7 @@ public class ContentService {
         // 2) Array: rezolvă fiecare element
         if (node.isArray()) {
             ArrayNode arr = om.createArrayNode();
-            for (JsonNode it : node) arr.add(resolveAssets(it));
+            for (JsonNode it : node) arr.add(resolveAssets(it, skipAssetUrls));
             return arr;
         }
 
@@ -213,8 +219,9 @@ public class ContentService {
     /** Transformă assetId în { uri, kind, mime }.
      *  Pentru Flutter assets locale, scoatem prefixul "app://".
      *  Pentru S3 assets, generăm pre-signed URLs pentru acces securizat.
+     *  @param skipAssetUrls If true, returns S3 key instead of presigned URL
      */
-    private JsonNode assetNodeFor(long id) {
+    private JsonNode assetNodeFor(long id, boolean skipAssetUrls) {
         var a = assetRepo.findById(id).orElse(null);
         ObjectNode out = om.createObjectNode();
         if (a == null) {
@@ -230,9 +237,13 @@ public class ContentService {
         if (uri.startsWith("app://")) {
             uri = uri.substring("app://".length()); // -> assets/images/soare.png
         }
-        // Handle S3 assets - generate pre-signed URL
+        // Handle S3 assets
         else if (s3Service.isS3Key(uri)) {
-            uri = s3Service.generatePresignedUrl(uri);
+            if (!skipAssetUrls) {
+                // Generate pre-signed URL only if not skipping
+                uri = s3Service.generatePresignedUrl(uri);
+            }
+            // Otherwise keep the S3 key as-is
         }
         
         out.put("uri", uri);
