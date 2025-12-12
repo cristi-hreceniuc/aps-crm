@@ -30,11 +30,12 @@ public class ContentController {
 
     @GetMapping("/profiles/{profileId}/submodules/{submoduleId}")
     public SubmoduleListDTO getSubmodule(@PathVariable Long profileId, @PathVariable Long submoduleId) {
-        var lessons = contentService.submoduleLessonsWithProgress(profileId, submoduleId, SecurityUtils.currentUserId());
-
-        return contentService.getSubmodule(profileId, SecurityUtils.currentUserId(), submoduleId).toBuilder()
-                .lessons(lessons)
-                .build();
+        return contentService.getSubmodule(profileId, SecurityUtils.currentUserId(), submoduleId);
+    }
+    
+    @GetMapping("/profiles/{profileId}/parts/{partId}")
+    public PartDTO getPart(@PathVariable Long profileId, @PathVariable Long partId) {
+        return contentService.getPart(profileId, SecurityUtils.currentUserId(), partId);
     }
 
     @GetMapping("/profiles/{profileId}/lessons/{lessonId}")

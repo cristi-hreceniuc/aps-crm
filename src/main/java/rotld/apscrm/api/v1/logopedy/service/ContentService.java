@@ -31,6 +31,7 @@ public class ContentService {
 
     private final ModuleRepo moduleRepo;
     private final SubmoduleRepo submoduleRepo;
+    private final PartRepo partRepo;
     private final LessonRepo lessonRepo;
     private final LessonScreenRepo screenRepo;
     private final ProfileRepo profileRepo;
@@ -93,14 +94,38 @@ public class ContentService {
         Module m = s.getModule();
         checkPremiumAccess(p, m);
 
-        List<LessonListItemDTO> lessons = lessonRepo.findBySubmoduleIdOrderByPositionAsc(submoduleId)
-                .stream()
-                .map(l -> new LessonListItemDTO(
-                        l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), l.getPosition(), null
-                ))
+        // Get all parts for this submodule
+        List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        
+        // Get lesson statuses for progress tracking
+        Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
+                .filter(pls -> pls.getStatus() == LessonStatus.DONE)
+                .map(pls -> pls.getId().getLessonId())
+                .collect(Collectors.toSet());
+
+        List<PartListItemDTO> partDTOs = parts.stream()
+                .map(part -> {
+                    long totalLessons = lessonRepo.countByPartIdAndIsActiveTrue(part.getId());
+                    
+                    // Count completed lessons in this part
+                    List<Lesson> partLessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+                    long completedLessons = partLessons.stream()
+                            .filter(l -> doneLessons.contains(l.getId()))
+                            .count();
+                    
+                    return new PartListItemDTO(
+                            part.getId(),
+                            part.getName(),
+                            part.getSlug(),
+                            part.getDescription(),
+                            part.getPosition(),
+                            (int) totalLessons,
+                            (int) completedLessons
+                    );
+                })
                 .toList();
 
-        return new SubmoduleListDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), lessons);
+        return new SubmoduleListDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), partDTOs);
     }
 
     public LessonPlayDTO getLesson(Long profileId, String userId, Long lessonId) {
@@ -254,5 +279,67 @@ public class ContentService {
             ));
         }
         return out;
+    }
+    
+    /**
+     * Get a part with all its lessons and progress tracking
+     */
+    @Transactional(readOnly = true)
+    public PartDTO getPart(Long profileId, String userId, Long partId) {
+        Profile p = requireProfile(profileId, userId);
+        Part part = partRepo.findById(partId)
+                .orElseThrow(() -> new EntityNotFoundException("Part not found"));
+        
+        Module m = part.getSubmodule().getModule();
+        checkPremiumAccess(p, m);
+        
+        // Get all lessons in this part
+        List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(partId);
+        
+        // Get lesson statuses for progress tracking
+        Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
+                .filter(pls -> pls.getStatus() == LessonStatus.DONE)
+                .map(pls -> pls.getId().getLessonId())
+                .collect(Collectors.toSet());
+        
+        boolean unlockedGiven = false;
+        List<LessonListItemDTO> lessonDTOs = new ArrayList<>();
+        
+        for (Lesson l : lessons) {
+            LessonStatus status;
+            if (doneLessons.contains(l.getId())) {
+                status = LessonStatus.DONE;
+            } else if (!unlockedGiven) {
+                status = LessonStatus.UNLOCKED;
+                unlockedGiven = true;
+            } else {
+                status = LessonStatus.LOCKED;
+            }
+            
+            lessonDTOs.add(new LessonListItemDTO(
+                    l.getId(), 
+                    l.getTitle(), 
+                    l.getHint(), 
+                    l.getLessonType(), 
+                    l.getPosition(), 
+                    status
+            ));
+        }
+        
+        int totalLessons = lessonDTOs.size();
+        int completedLessons = (int) lessonDTOs.stream()
+                .filter(l -> l.status() == LessonStatus.DONE)
+                .count();
+        
+        return new PartDTO(
+                part.getId(),
+                part.getName(),
+                part.getSlug(),
+                part.getDescription(),
+                part.getPosition(),
+                lessonDTOs,
+                totalLessons,
+                completedLessons
+        );
     }
 }

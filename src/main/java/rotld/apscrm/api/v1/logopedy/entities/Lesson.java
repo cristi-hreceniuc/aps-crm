@@ -9,6 +9,7 @@ import rotld.apscrm.api.v1.logopedy.enums.LessonType;
 public class Lesson {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) Long id;
     @ManyToOne(optional=false) Submodule submodule;
+    @ManyToOne(optional=false) Part part;
     String code;
     @Column(nullable=false) String title;
     @Lob String hint;

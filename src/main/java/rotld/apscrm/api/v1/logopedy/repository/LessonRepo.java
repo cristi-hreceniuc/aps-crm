@@ -9,8 +9,12 @@ import java.util.List;
 
 public interface LessonRepo extends JpaRepository<Lesson, Long> {
     List<Lesson> findBySubmoduleIdOrderByPositionAsc(Long submoduleId);
+    
+    List<Lesson> findByPartIdAndIsActiveTrueOrderByPositionAsc(Long partId);
+    
     @Query("select count(l) from Lesson l where l.isActive=true")
     long countActive();
+    
     @Query("""
     select l from Lesson l
     join l.submodule s
@@ -33,4 +37,10 @@ public interface LessonRepo extends JpaRepository<Lesson, Long> {
      order by l.position asc
   """)
     List<Long> findIdsBySubmoduleOrdered(Long submoduleId);
+    
+    @Query("""
+     select count(l) from Lesson l
+     where l.part.id = :partId and l.isActive = true
+  """)
+    long countByPartIdAndIsActiveTrue(Long partId);
 }
