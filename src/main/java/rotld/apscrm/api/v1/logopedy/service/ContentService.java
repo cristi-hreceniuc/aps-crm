@@ -368,8 +368,11 @@ public class ContentService {
         Module m = submodule.getModule();
         checkPremiumAccess(p, m);
         
+        System.out.println("📦 [getSubmoduleAssets] Scanning submodule " + submoduleId + ": " + submodule.getTitle());
+        
         // Get all parts for this submodule
         List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        System.out.println("📦 [getSubmoduleAssets] Found " + parts.size() + " parts");
         
         // Collect all assets from all lessons in all parts
         List<AssetInfoDTO> allAssets = new ArrayList<>();
@@ -377,10 +380,12 @@ public class ContentService {
         
         for (Part part : parts) {
             List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+            System.out.println("📦 [getSubmoduleAssets] Part " + part.getId() + " (" + part.getName() + ") has " + lessons.size() + " lessons");
             
             for (Lesson lesson : lessons) {
                 // Get all screens for this lesson
                 List<LessonScreen> screens = screenRepo.findByLessonIdOrderByPositionAsc(lesson.getId());
+                System.out.println("📦 [getSubmoduleAssets] Lesson " + lesson.getId() + " (" + lesson.getTitle() + ") has " + screens.size() + " screens");
                 
                 for (LessonScreen screen : screens) {
                     // Parse the payload and extract all asset references
@@ -389,6 +394,10 @@ public class ContentService {
                             lesson.getId(), 
                             lesson.getTitle()
                     );
+                    System.out.println("📦 [getSubmoduleAssets] Screen " + screen.getId() + " (type: " + screen.getScreenType() + ") has " + screenAssets.size() + " assets");
+                    for (AssetInfoDTO asset : screenAssets) {
+                        System.out.println("📦 [getSubmoduleAssets]   - Asset: " + asset.s3Key());
+                    }
                     allAssets.addAll(screenAssets);
                     
                     // Estimate size (rough estimate: images ~500KB, audio ~1MB)
