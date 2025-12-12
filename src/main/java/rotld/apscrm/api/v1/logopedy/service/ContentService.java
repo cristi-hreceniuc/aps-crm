@@ -343,4 +343,195 @@ public class ContentService {
                 completedLessons
         );
     }
+
+    /**
+     * Get all assets for a submodule for offline caching
+     * Returns S3 keys (not presigned URLs) for efficient batch downloading
+     */
+    @Transactional(readOnly = true)
+    public SubmoduleAssetsDTO getSubmoduleAssets(Long profileId, String userId, Long submoduleId) {
+        Profile p = requireProfile(profileId, userId);
+        Submodule submodule = submoduleRepo.findById(submoduleId)
+                .orElseThrow(() -> new EntityNotFoundException("Submodule not found"));
+        
+        Module m = submodule.getModule();
+        checkPremiumAccess(p, m);
+        
+        // Get all parts for this submodule
+        List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        
+        // Collect all assets from all lessons in all parts
+        List<AssetInfoDTO> allAssets = new ArrayList<>();
+        long estimatedSize = 0L;
+        
+        for (Part part : parts) {
+            List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+            
+            for (Lesson lesson : lessons) {
+                // Get all screens for this lesson
+                List<LessonScreen> screens = screenRepo.findByLessonIdOrderByPositionAsc(lesson.getId());
+                
+                for (LessonScreen screen : screens) {
+                    // Parse the payload and extract all asset references
+                    List<AssetInfoDTO> screenAssets = extractAssetsFromPayload(
+                            screen.getPayload(), 
+                            lesson.getId(), 
+                            lesson.getTitle()
+                    );
+                    allAssets.addAll(screenAssets);
+                    
+                    // Estimate size (rough estimate: images ~500KB, audio ~1MB)
+                    for (AssetInfoDTO asset : screenAssets) {
+                        if ("AUDIO".equals(asset.kind())) {
+                            estimatedSize += 1_000_000; // 1MB per audio
+                        } else if ("IMAGE".equals(asset.kind())) {
+                            estimatedSize += 500_000; // 500KB per image
+                        } else {
+                            estimatedSize += 100_000; // 100KB default
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Remove duplicates (same asset might be used in multiple lessons)
+        List<AssetInfoDTO> uniqueAssets = allAssets.stream()
+                .collect(Collectors.toMap(
+                        AssetInfoDTO::assetId,
+                        asset -> asset,
+                        (existing, replacement) -> existing // Keep first occurrence
+                ))
+                .values()
+                .stream()
+                .toList();
+        
+        return new SubmoduleAssetsDTO(
+                submoduleId,
+                submodule.getTitle(),
+                uniqueAssets,
+                uniqueAssets.size(),
+                estimatedSize
+        );
+    }
+    
+    /**
+     * Extract asset information from a lesson screen payload
+     */
+    private List<AssetInfoDTO> extractAssetsFromPayload(String payloadJson, Long lessonId, String lessonTitle) {
+        List<AssetInfoDTO> assets = new ArrayList<>();
+        
+        try {
+            JsonNode root = om.readTree(payloadJson);
+            extractAssetsRecursively(root, lessonId, lessonTitle, assets);
+        } catch (Exception e) {
+            // Log error but don't fail the request
+            System.err.println("Error parsing payload for lesson " + lessonId + ": " + e.getMessage());
+        }
+        
+        return assets;
+    }
+    
+    /**
+     * Recursively extract assets from JSON payload
+     */
+    private void extractAssetsRecursively(JsonNode node, Long lessonId, String lessonTitle, List<AssetInfoDTO> assets) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        
+        // Check if this object has an assetId
+        if (node.isObject()) {
+            ObjectNode obj = (ObjectNode) node;
+            
+            // Case 1: Direct asset reference { "assetId": 123 }
+            if (obj.has("assetId") && obj.get("assetId").canConvertToLong()) {
+                long assetId = obj.get("assetId").asLong();
+                
+                // Fetch asset details from database
+                assetRepo.findById(assetId).ifPresent(asset -> {
+                    String s3Key = asset.getUri();
+                    
+                    // Skip local app assets
+                    if (!s3Key.startsWith("app://") && !s3Key.startsWith("assets/")) {
+                        assets.add(new AssetInfoDTO(
+                                asset.getId(),
+                                s3Key,
+                                asset.getKind().name(),
+                                asset.getMime(),
+                                asset.getChecksum(),
+                                lessonId,
+                                lessonTitle
+                        ));
+                    }
+                });
+            }
+            
+            // Case 2: S3 key fields (s3Key, s3AudioKey, s3ImageKey, etc.)
+            obj.fields().forEachRemaining(entry -> {
+                String key = entry.getKey();
+                JsonNode value = entry.getValue();
+                
+                // Check for S3 key fields
+                boolean isS3KeyField = (key.startsWith("s3") || key.contains("s3Key")) && value.isTextual();
+                
+                if (isS3KeyField) {
+                    String s3Path = value.asText();
+                    if (s3Service.isS3Key(s3Path)) {
+                        // Create synthetic asset info for direct S3 keys
+                        // (these don't have assetId in database)
+                        assets.add(new AssetInfoDTO(
+                                null, // no assetId for direct S3 keys
+                                s3Path,
+                                key.toLowerCase().contains("audio") ? "AUDIO" : "IMAGE",
+                                detectMimeType(s3Path),
+                                null, // no checksum
+                                lessonId,
+                                lessonTitle
+                        ));
+                    }
+                } else {
+                    // Recursively check child nodes
+                    extractAssetsRecursively(value, lessonId, lessonTitle, assets);
+                }
+            });
+        }
+        
+        // Handle arrays
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                extractAssetsRecursively(item, lessonId, lessonTitle, assets);
+            }
+        }
+    }
+    
+    /**
+     * Detect MIME type from S3 key/filename
+     */
+    private String detectMimeType(String s3Key) {
+        String lower = s3Key.toLowerCase();
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".m4a")) return "audio/mp4";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".ogg")) return "audio/ogg";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".webp")) return "image/webp";
+        return "application/octet-stream";
+    }
+
+    /**
+     * Generate presigned URL for an S3 key
+     * Used by mobile app for offline asset downloading
+     */
+    public String generatePresignedUrl(Long profileId, String userId, String s3Key) {
+        // Verify profile access
+        requireProfile(profileId, userId);
+        
+        // Generate presigned URL
+        if (s3Service.isS3Key(s3Key)) {
+            return s3Service.generatePresignedUrl(s3Key);
+        }
+        
+        return "";
+    }
 }
