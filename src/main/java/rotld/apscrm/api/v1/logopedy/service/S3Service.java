@@ -8,8 +8,6 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -17,7 +15,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import java.time.Duration;
 
 /**
- * Service for generating pre-signed URLs for private S3 assets
+ * Service for generating pre-signed URLs for private S3 assets.
  */
 @Service
 @Slf4j
@@ -53,47 +51,24 @@ public class S3Service {
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
 
-        log.info("S3Service initialized - Bucket: {}, Region: {}, URL Expiration: {} minutes",
+        log.info("S3Service initialized - Bucket: {}, Region: {}, URL Expiration: {} min",
                 bucketName, region, expirationMinutes);
     }
 
     /**
-     * Generates a pre-signed URL for an S3 object
-     * Handles UTF-8 characters (diacritics) in filenames by ensuring proper encoding.
+     * Generates a pre-signed URL for an S3 object.
      * 
-     * @param s3Key The S3 key (e.g., "modules/1/submodules/1/lessons/1/image.jpg" or "submodules/s/că.mp3")
-     * @return Pre-signed URL valid for the configured duration
+     * @param s3Key The S3 key from database (e.g., "submodules/s/ca.mp3")
+     * @return Pre-signed URL valid for the configured duration, or empty string on error
      */
     public String generatePresignedUrl(String s3Key) {
         try {
             // Remove leading slash if present
             String cleanKey = s3Key.startsWith("/") ? s3Key.substring(1) : s3Key;
             
-            // Normalize Unicode to NFC (Canonical Composition)
-            // This ensures diacritics are in composed form (e.g., ș as single character, not s + combining diacritic)
-            cleanKey = java.text.Normalizer.normalize(cleanKey, java.text.Normalizer.Form.NFC);
-            
-            // Log the original key for debugging with detailed character analysis
-            StringBuilder charDebug = new StringBuilder();
-            for (int i = 0; i < cleanKey.length(); i++) {
-                char c = cleanKey.charAt(i);
-                if (c > 127) { // Non-ASCII
-                    charDebug.append(String.format("'%c'=U+%04X ", c, (int)c));
-                }
-            }
-            log.info("Generating presigned URL for S3 key: {}", cleanKey);
-            if (charDebug.length() > 0) {
-                log.info("  Non-ASCII chars: {}", charDebug.toString());
-            }
-            log.info("  UTF-8 bytes: {}", 
-                    java.util.Arrays.toString(cleanKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            
-            
-            // Use the key as-is from database (already NFC normalized above)
-            // AWS SDK will handle URL encoding correctly
-            
-            // AWS SDK v2 should handle UTF-8 encoding automatically
-            // The key should be passed as-is (unencoded) to the SDK
+            log.debug("Generating presigned URL for S3 key: {}", cleanKey);
+
+            // Generate presigned URL
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(cleanKey)
@@ -107,13 +82,10 @@ public class S3Service {
             PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
             String url = presignedRequest.url().toString();
 
-            // Log the generated URL (truncate for readability)
-            String urlPreview = url.length() > 150 ? url.substring(0, 150) + "..." : url;
-            log.info("✅ Successfully generated presigned URL");
-            log.info("  Final key used: {}", cleanKey);
-            log.info("  URL preview: {}", urlPreview);
+            // Log success
+            String urlPreview = url.length() > 120 ? url.substring(0, 120) + "..." : url;
+            log.debug("Presigned URL: {}", urlPreview);
             
-            // Verify the URL is properly formed
             if (url.isEmpty() || !url.startsWith("http")) {
                 log.error("Generated URL is invalid: {}", url);
                 return "";
@@ -123,15 +95,12 @@ public class S3Service {
 
         } catch (Exception e) {
             log.error("Failed to generate pre-signed URL for key '{}': {}", s3Key, e.getMessage(), e);
-            return ""; // Return empty string on error
+            return "";
         }
     }
 
     /**
      * Checks if a URI is an S3 key (not a local app:// asset)
-     * 
-     * @param uri The URI to check
-     * @return true if this is an S3 key, false if it's a local asset
      */
     public boolean isS3Key(String uri) {
         if (uri == null || uri.isEmpty()) {
@@ -148,10 +117,7 @@ public class S3Service {
             return false;
         }
         
-        // Otherwise, assume it's an S3 key (e.g., "modules/1/submodules/1/lessons/1/image.jpg")
+        // Otherwise, assume it's an S3 key
         return true;
     }
-    
 }
-
-
