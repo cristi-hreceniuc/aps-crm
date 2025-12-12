@@ -40,34 +40,7 @@ public class ContentController {
     }
 
     @GetMapping("/profiles/{profileId}/lessons/{lessonId}")
-    public LessonPlayDTO getLesson(
-            @PathVariable Long profileId,
-            @PathVariable Long lessonId,
-            @RequestParam(required = false, defaultValue = "false") boolean skipAssetUrls) {
-        return contentService.getLesson(profileId, SecurityUtils.currentUserId(), lessonId, skipAssetUrls);
-    }
-
-    /**
-     * Get all assets for a submodule for offline caching
-     * Returns S3 keys (not presigned URLs) to allow mobile app to download and cache
-     */
-    @GetMapping("/profiles/{profileId}/submodules/{submoduleId}/assets")
-    public SubmoduleAssetsDTO getSubmoduleAssets(
-            @PathVariable Long profileId,
-            @PathVariable Long submoduleId) {
-        return contentService.getSubmoduleAssets(profileId, SecurityUtils.currentUserId(), submoduleId);
-    }
-
-    /**
-     * Generate a presigned URL for an S3 asset
-     * Used by mobile app for offline asset downloading
-     */
-    @PostMapping("/profiles/{profileId}/assets/presign")
-    public Map<String, String> generatePresignedUrl(
-            @PathVariable Long profileId,
-            @RequestBody Map<String, String> request) {
-        String s3Key = request.get("s3Key");
-        String presignedUrl = contentService.generatePresignedUrl(profileId, SecurityUtils.currentUserId(), s3Key);
-        return Map.of("url", presignedUrl);
+    public LessonPlayDTO getLesson(@PathVariable Long profileId, @PathVariable Long lessonId) {
+        return contentService.getLesson(profileId, SecurityUtils.currentUserId(), lessonId);
     }
 }
