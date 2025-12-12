@@ -84,7 +84,7 @@ public class UserService {
 
     public Page<UserResponseDto> search(Pageable pageable, String q) {
         Page<User> page = userRepository.findAll(spec(q), remap(pageable));
-        return page.map(UserMapper::toDto);
+        return page.map(user -> UserMapper.toDto(user, s3Service));
     }
 
     private static String nz(String s) {

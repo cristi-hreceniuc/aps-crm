@@ -45,8 +45,15 @@ public class ProfileService {
                 .map(p -> {
                     long done = plsRepo.completedCount(p.getId());
                     int percent = totalLessons == 0 ? 0 : (int)Math.round(done * 100.0 / totalLessons);
+                    
+                    // Convert S3 key to presigned URL if it exists
+                    String avatarUrl = p.getAvatarUri();
+                    if (avatarUrl != null && !avatarUrl.isEmpty() && s3Service.isS3Key(avatarUrl)) {
+                        avatarUrl = s3Service.generatePresignedUrl(avatarUrl);
+                    }
+                    
                     return new ProfileCardDTO(
-                            p.getId(), p.getName(), p.getAvatarUri(),
+                            p.getId(), p.getName(), avatarUrl,
                             user.getIsPremium(), percent, done, totalLessons,
                             p.getBirthday(), p.getGender()
                     );
@@ -63,8 +70,14 @@ public class ProfileService {
         p.setGender(gender);
         profileRepo.save(p);
 
+        // Convert S3 key to presigned URL if it exists
+        String avatarUrl = p.getAvatarUri();
+        if (avatarUrl != null && !avatarUrl.isEmpty() && s3Service.isS3Key(avatarUrl)) {
+            avatarUrl = s3Service.generatePresignedUrl(avatarUrl);
+        }
+
         long totalLessons = lessonRepo.countActive();
-        return new ProfileCardDTO(p.getId(), p.getName(), p.getAvatarUri(),
+        return new ProfileCardDTO(p.getId(), p.getName(), avatarUrl,
                 user.getIsPremium(), 0, 0, totalLessons,
                 p.getBirthday(), p.getGender());
     }

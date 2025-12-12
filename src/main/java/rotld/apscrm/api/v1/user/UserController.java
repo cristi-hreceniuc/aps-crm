@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import rotld.apscrm.api.v1.logopedy.service.S3Service;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
@@ -24,17 +25,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final S3Service s3Service;
 
     @GetMapping("/me")
     public UserResponseDto authenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return UserMapper.toDto((User) authentication.getPrincipal());
+        return UserMapper.toDto((User) authentication.getPrincipal(), s3Service);
     }
 
     @GetMapping
     public List<UserResponseDto> allUsers() {
         return userService.allUsers().stream()
-                .map(UserMapper::toDto)
+                .map(user -> UserMapper.toDto(user, s3Service))
                 .toList();
     }
 
