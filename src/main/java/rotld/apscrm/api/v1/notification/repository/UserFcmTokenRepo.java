@@ -33,4 +33,31 @@ public interface UserFcmTokenRepo extends JpaRepository<UserFcmToken, Long> {
     
     @Query("SELECT t.fcmToken FROM UserFcmToken t WHERE t.user.id = :userId")
     List<String> findTokensByUserId(@Param("userId") String userId);
+    
+    /**
+     * Find FCM tokens for users with specific role
+     */
+    @Query("SELECT DISTINCT t.fcmToken FROM UserFcmToken t WHERE t.user.userRole = :role")
+    List<String> findTokensByUserRole(@Param("role") rotld.apscrm.api.v1.user.dto.UserRole role);
+    
+    /**
+     * Find FCM tokens for premium users
+     */
+    @Query("SELECT DISTINCT t.fcmToken FROM UserFcmToken t WHERE t.user.isPremium = true")
+    List<String> findTokensForPremiumUsers();
+    
+    /**
+     * Find FCM tokens for non-premium users
+     */
+    @Query("SELECT DISTINCT t.fcmToken FROM UserFcmToken t WHERE t.user.isPremium = false OR t.user.isPremium IS NULL")
+    List<String> findTokensForNonPremiumUsers();
+    
+    /**
+     * Find FCM tokens for users with specific role AND premium status
+     */
+    @Query("SELECT DISTINCT t.fcmToken FROM UserFcmToken t WHERE t.user.userRole = :role AND t.user.isPremium = :isPremium")
+    List<String> findTokensByRoleAndPremium(
+            @Param("role") rotld.apscrm.api.v1.user.dto.UserRole role, 
+            @Param("isPremium") boolean isPremium
+    );
 }

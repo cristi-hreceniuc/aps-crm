@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import rotld.apscrm.api.v1.notification.repository.UserFcmTokenRepo;
+import rotld.apscrm.api.v1.user.dto.UserRole;
 
 import java.io.IOException;
 import java.util.List;
@@ -253,5 +254,97 @@ public class PushNotificationService {
 
     public boolean isInitialized() {
         return firebaseInitialized;
+    }
+
+    // ============ Targeted notification methods ============
+
+    /**
+     * Send notification to users by role
+     */
+    public int sendToUsersByRole(UserRole role, String title, String body, Map<String, String> data) {
+        List<String> tokens = fcmTokenRepo.findTokensByUserRole(role);
+        
+        if (tokens.isEmpty()) {
+            log.info("No FCM tokens found for role: {}", role);
+            return 0;
+        }
+
+        log.info("Sending notification to {} users with role: {}", tokens.size(), role);
+        sendToTokensBatched(tokens, title, body, data);
+        return tokens.size();
+    }
+
+    /**
+     * Send notification to premium users only
+     */
+    public int sendToPremiumUsers(String title, String body, Map<String, String> data) {
+        List<String> tokens = fcmTokenRepo.findTokensForPremiumUsers();
+        
+        if (tokens.isEmpty()) {
+            log.info("No FCM tokens found for premium users");
+            return 0;
+        }
+
+        log.info("Sending notification to {} premium users", tokens.size());
+        sendToTokensBatched(tokens, title, body, data);
+        return tokens.size();
+    }
+
+    /**
+     * Send notification to non-premium users only
+     */
+    public int sendToNonPremiumUsers(String title, String body, Map<String, String> data) {
+        List<String> tokens = fcmTokenRepo.findTokensForNonPremiumUsers();
+        
+        if (tokens.isEmpty()) {
+            log.info("No FCM tokens found for non-premium users");
+            return 0;
+        }
+
+        log.info("Sending notification to {} non-premium users", tokens.size());
+        sendToTokensBatched(tokens, title, body, data);
+        return tokens.size();
+    }
+
+    /**
+     * Send notification to users by role AND premium status
+     */
+    public int sendToUsersByRoleAndPremium(UserRole role, boolean isPremium, String title, String body, Map<String, String> data) {
+        List<String> tokens = fcmTokenRepo.findTokensByRoleAndPremium(role, isPremium);
+        
+        if (tokens.isEmpty()) {
+            log.info("No FCM tokens found for role: {} and premium: {}", role, isPremium);
+            return 0;
+        }
+
+        log.info("Sending notification to {} users with role: {} and premium: {}", tokens.size(), role, isPremium);
+        sendToTokensBatched(tokens, title, body, data);
+        return tokens.size();
+    }
+
+    /**
+     * Send to all users and return count
+     */
+    public int sendToAllUsersAndCount(String title, String body, Map<String, String> data) {
+        List<String> allTokens = fcmTokenRepo.findAllTokens();
+        
+        if (allTokens.isEmpty()) {
+            log.info("No FCM tokens registered. No notifications sent.");
+            return 0;
+        }
+
+        sendToTokensBatched(allTokens, title, body, data);
+        return allTokens.size();
+    }
+
+    /**
+     * Helper to send to tokens in batches of 500
+     */
+    private void sendToTokensBatched(List<String> tokens, String title, String body, Map<String, String> data) {
+        int batchSize = 500;
+        for (int i = 0; i < tokens.size(); i += batchSize) {
+            List<String> batch = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
+            sendToTokens(batch, title, body, data);
+        }
     }
 }
