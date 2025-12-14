@@ -41,7 +41,7 @@ public class ProgressService {
                 .orElseGet(() -> {
                     // fallback: primul conținut disponibil
                     Module m = moduleRepo.findAllByIsActiveTrueOrderByPositionAsc().get(0);
-                    Submodule s = submoduleRepo.findByModuleIdOrderByPositionAsc(m.getId()).get(0);
+                    Submodule s = submoduleRepo.findAllByModule_IdOrderByPositionAsc(m.getId()).get(0);
                     var lessons = lessonRepo.findBySubmoduleOrdered(s.getId());
                     if (lessons.isEmpty()) {
                         throw new EntityNotFoundException("No active lessons found");
@@ -101,7 +101,7 @@ public class ProgressService {
             } else {
                 endOfSubmodule = true;
                 // următorul submodul / modul
-                var subs = submoduleRepo.findByModuleIdOrderByPositionAsc(m.getId());
+                var subs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(m.getId());
                 int sidx = IntStream.range(0, subs.size())
                         .filter(i -> subs.get(i).getId().equals(l.getSubmodule().getId())).findFirst().orElse(-1);
                 if (sidx >= 0 && sidx + 1 < subs.size()) {
@@ -120,7 +120,7 @@ public class ProgressService {
                     if (midx >= 0 && midx + 1 < mods.size()) {
                         var nm = mods.get(midx + 1);
                         nextModId = nm.getId();
-                        var nextSubs = submoduleRepo.findByModuleIdOrderByPositionAsc(nm.getId());
+                        var nextSubs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(nm.getId());
                         if (!nextSubs.isEmpty()) {
                             var nsub = nextSubs.get(0);
                             nextSubId = nsub.getId();

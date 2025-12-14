@@ -80,7 +80,7 @@ public class ContentService {
         Module m = moduleRepo.findById(moduleId).orElseThrow(() -> new EntityNotFoundException("Module"));
         checkPremiumAccess(p, m);
 
-        List<SubmoduleDTO> subs = submoduleRepo.findByModuleIdOrderByPositionAsc(moduleId)
+        List<SubmoduleDTO> subs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(moduleId)
                 .stream().map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), null))
                 .toList();
 

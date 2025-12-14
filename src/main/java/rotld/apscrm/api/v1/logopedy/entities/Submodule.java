@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter @Setter @Entity
 public class Submodule {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) Long id;
-    @ManyToOne(optional=false) Module module;
+    @ManyToOne Module module;
     String slug;
     @Column(nullable=false) String title;
     @Lob String introText;
