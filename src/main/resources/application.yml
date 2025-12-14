@@ -68,3 +68,7 @@ aws:
     access-key: ${S3_ACCESS_KEY}
     secret-key: ${S3_SECRET_KEY}
     presigned-url-expiration-minutes: 60  # Pre-signed URLs valid for 60 minutes
+
+# Firebase Configuration for push notifications
+firebase:
+  config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-service-account.json}

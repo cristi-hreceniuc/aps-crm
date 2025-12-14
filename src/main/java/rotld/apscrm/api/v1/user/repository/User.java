@@ -75,6 +75,9 @@ public class User implements UserDetails {
     @Column(name="profile_image_url")
     private String profileImageUrl;
 
+    @Column(name="last_activity_at")
+    private LocalDateTime lastActivityAt;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(userRole.toString()));

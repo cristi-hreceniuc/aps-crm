@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,4 +32,35 @@ public interface UserRepository extends JpaRepository<User, String>, JpaSpecific
     @Modifying
     @Query(value = "DELETE FROM users WHERE id = :id", nativeQuery = true)
     int hardDelete(String id);
+
+    /**
+     * Find users who haven't had activity today (for daily practice reminder)
+     * Only returns users who have registered FCM tokens
+     */
+    @Query("""
+            SELECT DISTINCT u FROM User u
+            JOIN UserFcmToken t ON t.user = u
+            WHERE u.lastActivityAt IS NULL 
+               OR u.lastActivityAt < :todayStart
+            """)
+    List<User> findUsersWithNoActivityToday(@Param("todayStart") LocalDateTime todayStart);
+
+    /**
+     * Find users who have been inactive for 7+ days
+     * Only returns users who have registered FCM tokens
+     */
+    @Query("""
+            SELECT DISTINCT u FROM User u
+            JOIN UserFcmToken t ON t.user = u
+            WHERE u.lastActivityAt IS NULL 
+               OR u.lastActivityAt < :cutoffDate
+            """)
+    List<User> findUsersInactiveFor(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    /**
+     * Update last activity timestamp for a user
+     */
+    @Modifying
+    @Query("UPDATE User u SET u.lastActivityAt = :timestamp WHERE u.id = :userId")
+    void updateLastActivity(@Param("userId") String userId, @Param("timestamp") LocalDateTime timestamp);
 }

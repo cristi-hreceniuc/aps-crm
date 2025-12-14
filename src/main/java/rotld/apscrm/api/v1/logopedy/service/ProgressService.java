@@ -11,8 +11,10 @@ import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
 import rotld.apscrm.api.v1.logopedy.enums.ProgressStatus;
 import rotld.apscrm.api.v1.logopedy.repository.*;
 import rotld.apscrm.api.v1.logopedy.entities.Module;
+import rotld.apscrm.api.v1.user.repository.UserRepository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -27,6 +29,7 @@ public class ProgressService {
     private final SubmoduleRepo submoduleRepo;
     private final ModuleRepo moduleRepo;
     private final LessonScreenRepo screenRepo;
+    private final UserRepository userRepository;
 
     private Profile requireProfile(Long profileId, String userId) {
         return profileRepo.findByIdAndUserId(profileId, userId)
@@ -56,6 +59,9 @@ public class ProgressService {
         Profile p = requireProfile(profileId, userId);
         Lesson l = lessonRepo.findById(lessonId).orElseThrow(() -> new EntityNotFoundException("Lesson"));
         Module m = l.getSubmodule().getModule();
+        
+        // Update user's last activity timestamp for push notification tracking
+        userRepository.updateLastActivity(userId, LocalDateTime.now());
 
         // --- asigură status pe lecția curentă
         var key = new ProfileLessonKey(profileId, lessonId);

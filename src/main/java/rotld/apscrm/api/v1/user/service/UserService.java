@@ -16,6 +16,7 @@ import rotld.apscrm.api.v1.logopedy.repository.ProfileLessonStatusRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileProgressRepo;
 import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
 import rotld.apscrm.api.v1.logopedy.service.S3Service;
+import rotld.apscrm.api.v1.notification.service.PushNotificationService;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
@@ -33,6 +34,7 @@ public class UserService {
     private final ProfileLessonStatusRepo profileLessonStatusRepo;
     private final ProfileProgressRepo profileProgressRepo;
     private final S3Service s3Service;
+    private final PushNotificationService pushNotificationService;
 
     public List<User> allUsers() {
         return userRepository.findAll();
@@ -101,8 +103,14 @@ public class UserService {
 
     @Transactional
     public void setPremium(UUID id, boolean premium) {
-        if (userRepository.updatePremium(id.toString(), premium) == 0)
+        String userId = id.toString();
+        if (userRepository.updatePremium(userId, premium) == 0)
             throw new IllegalArgumentException("User not found: " + id);
+        
+        // Send push notification when premium is granted
+        if (premium) {
+            pushNotificationService.sendPremiumGranted(userId);
+        }
     }
 
     @Transactional
