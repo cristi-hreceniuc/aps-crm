@@ -14,6 +14,8 @@ import rotld.apscrm.api.v1.user.repository.UserRepository;
 import rotld.apscrm.services.AuthenticationService;
 import rotld.apscrm.services.JwtService;
 
+import java.util.Map;
+
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @RestController
@@ -51,7 +53,9 @@ public class AuthenticationController {
             }
         }
 
-        String jwtToken = jwtService.generateToken(authenticatedUser);
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("is_premium", Boolean.TRUE.equals(authenticatedUser.getIsPremium()));
+        String jwtToken = jwtService.generateToken(claims, authenticatedUser);
         var t = authenticationService.issueTokens(authenticatedUser);
 
         return LoginResponse.builder()
@@ -66,14 +70,15 @@ public class AuthenticationController {
                 .build();
     }
 
-    /** Reînnoiește access token-ul pe baza refresh-ului (și rotește refresh-ul). */
     @PostMapping("/refresh")
     public TokenResponse refresh(@RequestBody RefreshRequest req) {
         var rt = refreshTokenService.validateUsable(req.refreshToken());
-        // încarcă userul
+
         User user = userRepository.findById(rt.getUserId()).orElseThrow();
-        // gen. access nou
-        String access = jwtService.generateToken(user);
+
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("is_premium", Boolean.TRUE.equals(user.getIsPremium()));
+        String access = jwtService.generateToken(claims, user);
         long accessExp = jwtService.getExpirationTime();
         // rotește refresh-ul
         var newRt = refreshTokenService.rotate(rt, user.getId(), jwtService.getRefreshExpirationTime());
@@ -183,5 +188,33 @@ public class AuthenticationController {
     public ResponseEntity<Void> reset(@RequestBody ResetWithOtpDto dto) {
         authenticationService.resetPasswordWithOtp(dto.email(), dto.otp(), dto.password(), dto.confirmPassword());
         return ResponseEntity.noContent().build(); // 204 NO CONTENT
+    }
+
+    // ============== REGISTRATION WITH OTP ==============
+
+    /**
+     * Step 1: Request OTP for registration - stores pending registration and sends OTP to email
+     */
+    @PostMapping(value = "/register/request-otp", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> requestRegistrationOtp(@RequestBody RegisterOtpRequestDto dto) {
+        authenticationService.requestRegistrationOtp(dto);
+        return ResponseEntity.accepted().build(); // 202 ACCEPTED
+    }
+
+    /**
+     * Step 2: Verify OTP and complete registration
+     */
+    @PostMapping(value = "/register/verify-otp", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public User verifyRegistrationOtp(@RequestBody RegisterOtpVerifyDto dto) {
+        return authenticationService.verifyRegistrationOtp(dto.email(), dto.otp());
+    }
+
+    /**
+     * Resend OTP for pending registration
+     */
+    @PostMapping(value = "/register/resend-otp", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> resendRegistrationOtp(@RequestBody ForgotOtpDto dto) {
+        authenticationService.resendRegistrationOtp(dto.email());
+        return ResponseEntity.accepted().build(); // 202 ACCEPTED
     }
 }
