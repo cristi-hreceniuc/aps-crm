@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import rotld.apscrm.api.v1.notification.entities.UserFcmToken;
 import rotld.apscrm.api.v1.user.repository.User;
 
@@ -21,10 +22,12 @@ public interface UserFcmTokenRepo extends JpaRepository<UserFcmToken, Long> {
     Optional<UserFcmToken> findByFcmToken(String fcmToken);
     
     @Modifying
+    @Transactional
     @Query("DELETE FROM UserFcmToken t WHERE t.fcmToken = :fcmToken")
     void deleteByFcmToken(@Param("fcmToken") String fcmToken);
     
     @Modifying
+    @Transactional
     @Query("DELETE FROM UserFcmToken t WHERE t.user.id = :userId")
     void deleteAllByUserId(@Param("userId") String userId);
     

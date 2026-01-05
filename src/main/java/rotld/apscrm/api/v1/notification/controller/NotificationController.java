@@ -14,6 +14,7 @@ import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -48,6 +49,15 @@ public class NotificationController {
             fcmTokenRepo.save(token);
             log.info("Updated existing FCM token for user: {}", user.getId());
         } else {
+            // Delete old tokens for this user to prevent duplicate notifications
+            // This handles the case where FCM token changes (app reinstall, token refresh, etc.)
+            // We keep only the new token - if multi-device support is needed, this can be adjusted
+            List<UserFcmToken> oldTokens = fcmTokenRepo.findByUserId(user.getId());
+            if (!oldTokens.isEmpty()) {
+                log.info("Removing {} old FCM token(s) for user: {}", oldTokens.size(), user.getId());
+                fcmTokenRepo.deleteAll(oldTokens);
+            }
+            
             // Create new token
             UserFcmToken newToken = new UserFcmToken(user, request.fcmToken(), request.deviceInfo());
             fcmTokenRepo.save(newToken);
