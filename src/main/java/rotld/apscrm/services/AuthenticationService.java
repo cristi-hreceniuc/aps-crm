@@ -15,6 +15,7 @@ import rotld.apscrm.api.v1.auth.service.RefreshTokenService;
 import rotld.apscrm.api.v1.user.dto.*;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
+import rotld.apscrm.api.v1.user.service.UserService;
 import rotld.apscrm.exception.DuplicateEmailException;
 
 import java.security.SecureRandom;
@@ -34,6 +35,7 @@ public class AuthenticationService {
     private final EmailSenderService emailSenderService;
     private final RefreshTokenService refreshTokenService;
     private final JwtService jwtService;
+    private final UserService userService;
 
     @Value("${app.reset.frontend-url}")
     private String resetUrlBase;
@@ -480,5 +482,103 @@ public class AuthenticationService {
             log.error("Failed sending registration OTP email", e);
             throw new RuntimeException("Nu am putut trimite emailul cu codul de verificare.");
         }
+    }
+
+    // ============== ACCOUNT DELETION WITH OTP ==============
+
+    /**
+     * Step 1: Request OTP for account deletion - sends OTP to user's email
+     */
+    public void requestAccountDeletionOtp(String email) {
+        var opt = userRepository.findByEmail(email);
+        if (opt.isEmpty()) {
+            // idempotent: don't reveal if account exists
+            return;
+        }
+        var user = opt.get();
+
+        // lockout check
+        if (user.getOtpLockedUntil() != null && user.getOtpLockedUntil().isAfter(Instant.now())) {
+            // don't reveal the reason
+            return;
+        }
+
+        // Generate OTP 6 digits (000000–999999), hash for storage
+        String otp = String.format("%06d", RNG.nextInt(1_000_000));
+        String otpHash = passwordEncoder.encode(otp);
+        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(otpTtlMinutes));
+
+        user.setOtpHash(otpHash);
+        user.setOtpExpiresAt(expiresAt);
+        user.setOtpAttempts(0);
+        user.setOtpLockedUntil(null);
+        userRepository.save(user);
+
+        String html = buildAccountDeletionOtpEmailHtml(user.getFirstName(), otp, otpTtlMinutes);
+        try {
+            emailSenderService.sendEmail(user.getEmail(), "Cod confirmare ștergere cont – Logopedy", html);
+        } catch (Exception e) {
+            log.error("Failed sending account deletion OTP email", e);
+            throw new RuntimeException("Nu am putut trimite emailul cu codul de confirmare.");
+        }
+    }
+
+    /**
+     * Step 2: Verify OTP and delete account with all related data
+     */
+    public void confirmAccountDeletion(String email, String otp) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Cod invalid sau expirat."));
+
+        // lockout check
+        if (user.getOtpLockedUntil() != null && user.getOtpLockedUntil().isAfter(Instant.now())) {
+            throw new IllegalArgumentException("Prea multe încercări. Încearcă mai târziu.");
+        }
+
+        // expired check
+        if (user.getOtpExpiresAt() == null || user.getOtpExpiresAt().isBefore(Instant.now()) || user.getOtpHash() == null) {
+            throw new IllegalArgumentException("Cod invalid sau expirat.");
+        }
+
+        // verify OTP
+        boolean ok = passwordEncoder.matches(otp, user.getOtpHash());
+        if (!ok) {
+            int attempts = user.getOtpAttempts() + 1;
+            user.setOtpAttempts(attempts);
+
+            if (attempts >= otpMaxAttempts) {
+                user.setOtpLockedUntil(Instant.now().plus(Duration.ofMinutes(otpLockoutMinutes)));
+            }
+            userRepository.save(user);
+            throw new IllegalArgumentException("Cod invalid.");
+        }
+
+        // OTP valid - delete the account and all related data
+        userService.delete(java.util.UUID.fromString(user.getId()));
+    }
+
+    private String buildAccountDeletionOtpEmailHtml(String firstName, String code, long ttlMinutes) {
+        return """
+    <!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+    <title>Cod confirmare ștergere cont – Logopedy</title>
+    <style>
+      body{margin:0;padding:0;background:#f6f7fb;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111827}
+      .box{max-width:600px;margin:0 auto;background:#fff;padding:24px}
+      .code{font-size:28px;letter-spacing:4px;font-weight:700;background:#dc2626;color:#fff;display:inline-block;padding:10px 14px;border-radius:10px}
+      .warning{background:#fef2f2;border-left:4px solid #dc2626;padding:12px 16px;margin:16px 0;color:#991b1b}
+      .meta{color:#6b7280;font-size:12px;margin-top:16px}
+    </style></head><body>
+      <div class="box">
+        <p>Salut%s,</p>
+        <p>Ai solicitat ștergerea contului tău Logopedy. Pentru a confirma, introdu următorul cod:</p>
+        <div class="code">%s</div>
+        <div class="warning">
+          <strong>Atenție!</strong> Această acțiune este ireversibilă. Toate datele tale, inclusiv profilurile și progresul, vor fi șterse permanent.
+        </div>
+        <p>Codul expiră în %d minute și poate fi folosit o singură dată.</p>
+        <p class="meta">Dacă nu ai cerut tu această ștergere, ignoră acest mesaj și contul tău va rămâne în siguranță.</p>
+      </div>
+    </body></html>
+    """.formatted(firstName == null || firstName.isEmpty() ? "" : " " + firstName, code, ttlMinutes);
     }
 }

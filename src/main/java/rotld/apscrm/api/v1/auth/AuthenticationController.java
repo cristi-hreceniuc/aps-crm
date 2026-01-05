@@ -217,4 +217,24 @@ public class AuthenticationController {
         authenticationService.resendRegistrationOtp(dto.email());
         return ResponseEntity.accepted().build(); // 202 ACCEPTED
     }
+
+    // ============== ACCOUNT DELETION WITH OTP ==============
+
+    /**
+     * Step 1: Request OTP for account deletion - sends OTP to user's email
+     */
+    @PostMapping(value = "/delete-account/request-otp", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> requestAccountDeletionOtp(@RequestBody ForgotOtpDto dto) {
+        authenticationService.requestAccountDeletionOtp(dto.email());
+        return ResponseEntity.accepted().build(); // 202 ACCEPTED
+    }
+
+    /**
+     * Step 2: Verify OTP and delete account with all related data
+     */
+    @PostMapping(value = "/delete-account/confirm", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> confirmAccountDeletion(@RequestBody DeleteAccountConfirmDto dto) {
+        authenticationService.confirmAccountDeletion(dto.email(), dto.otp());
+        return ResponseEntity.noContent().build(); // 204 NO CONTENT
+    }
 }
