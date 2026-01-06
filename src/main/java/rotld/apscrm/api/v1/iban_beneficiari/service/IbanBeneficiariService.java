@@ -11,9 +11,7 @@ import rotld.apscrm.api.v1.iban_beneficiari.dto.IbanBeneficiariResponseDto;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiari;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiariViewRepository;
 import rotld.apscrm.api.v1.iban_beneficiari.repository.IbanBeneficiariWriteRepository;
-import rotld.apscrm.api.v1.volunteer.repository.VolunteerMeta;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,13 +65,8 @@ public class IbanBeneficiariService {
     public void upsertMeta(Integer postId, String key, String value) {
         int updated = writeRepo.updateMeta(postId, key, value);
         if (updated == 0) {
-            // dacă nu există, facem insert
-            VolunteerMeta meta = VolunteerMeta.builder()
-                    .id(postId)
-                    .metaKey(key)
-                    .metaValue(value)
-                    .build();
-            writeRepo.save(meta);
+            // dacă nu există, facem insert cu native query
+            writeRepo.insertMeta(postId, key, value);
         }
     }
 
@@ -90,13 +83,15 @@ public class IbanBeneficiariService {
         writeRepo.insertIbanPost();
         Integer newId = writeRepo.getLastInsertId();
 
-        // inserează meta (nume + iban)
+        // inserează meta (nume + iban + hide)
         if (name != null && !name.isBlank()) {
             writeRepo.insertMeta(newId, "nume", name);
         }
         if (iban != null && !iban.isBlank()) {
             writeRepo.insertMeta(newId, "iban", iban);
         }
+        // setează hide = false implicit
+        writeRepo.insertMeta(newId, "hide", "0");
 
         // returnăm DTO
         return IbanBeneficiariResponseDto.builder()
@@ -104,6 +99,7 @@ public class IbanBeneficiariService {
                 .name(name)
                 .iban(iban)
                 .addedAt(java.time.LocalDateTime.now().toString())
+                .hidden(false)
                 .build();
     }
 
