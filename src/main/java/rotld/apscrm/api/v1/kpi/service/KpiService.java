@@ -184,13 +184,17 @@ public class KpiService {
     /* ---------- IBAN Beneficiari ---------- */
     private KpiResponseDto.Iban fetchIban() {
         String sql = """
-      SELECT COUNT(*) AS total
+      SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN COALESCE(hide.meta_value, '0') = '1' THEN 1 ELSE 0 END) AS hidden
       FROM wordpress.wp_posts s
+      LEFT JOIN wordpress.wp_postmeta hide ON hide.post_id = s.ID AND hide.meta_key = 'hide'
       WHERE s.post_type='iban_beneficiar' AND s.post_status IN ('publish','draft')
     """;
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         return KpiResponseDto.Iban.builder()
                 .total(row.get("total") == null ? 0L : ((Number)row.get("total")).longValue())
+                .hidden(row.get("hidden") == null ? 0L : ((Number)row.get("hidden")).longValue())
                 .build();
     }
 
@@ -224,13 +228,22 @@ public class KpiService {
 
     /* ---------- Users ---------- */
     private KpiResponseDto.Persoane fetchUsers() {
-        String sql = "SELECT COUNT(*) AS total FROM wordpress.wp_users";
-        String sql1 = "SELECT COUNT(*) AS total FROM crm.users";
+        String sql = """
+            SELECT 
+                SUM(CASE WHEN user_role = 'ADMIN' THEN 1 ELSE 0 END) AS crm_admins,
+                SUM(CASE WHEN user_role = 'VOLUNTEER' THEN 1 ELSE 0 END) AS crm_volunteers,
+                SUM(CASE WHEN user_role = 'USER' THEN 1 ELSE 0 END) AS logopedy_users,
+                SUM(CASE WHEN user_role = 'SPECIALIST' THEN 1 ELSE 0 END) AS logopedy_specialists,
+                SUM(CASE WHEN user_role = 'PREMIUM' THEN 1 ELSE 0 END) AS logopedy_premium
+            FROM crm.users
+        """;
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
-        Map<String, Object> row1 = jdbc.queryForMap(sql1, new MapSqlParameterSource());
         return KpiResponseDto.Persoane.builder()
-                .users(row.get("total") == null ? 0L : ((Number)row.get("total")).longValue())
-                .admins(row1.get("total") == null ? 0L : ((Number)row1.get("total")).longValue())
+                .crmAdmins(row.get("crm_admins") == null ? 0L : ((Number)row.get("crm_admins")).longValue())
+                .crmVolunteers(row.get("crm_volunteers") == null ? 0L : ((Number)row.get("crm_volunteers")).longValue())
+                .logopedyUsers(row.get("logopedy_users") == null ? 0L : ((Number)row.get("logopedy_users")).longValue())
+                .logopedySpecialists(row.get("logopedy_specialists") == null ? 0L : ((Number)row.get("logopedy_specialists")).longValue())
+                .logopedyPremium(row.get("logopedy_premium") == null ? 0L : ((Number)row.get("logopedy_premium")).longValue())
                 .build();
     }
 }

@@ -45,6 +45,7 @@ public class KpiResponseDto {
     @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
     public static class Iban {
         private Long total;
+        private Long hidden;
     }
 
     @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
@@ -57,7 +58,12 @@ public class KpiResponseDto {
 
     @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
     public static class Persoane {
-        private Long users;
-        private Long admins;
+        // CRM accounts
+        private Long crmAdmins;
+        private Long crmVolunteers;
+        // Logopedy accounts
+        private Long logopedyUsers;
+        private Long logopedySpecialists;
+        private Long logopedyPremium;
     }
 }

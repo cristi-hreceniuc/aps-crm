@@ -1,9 +1,12 @@
 package rotld.apscrm.api.v1.user.dto;
 
 public enum UserRole {
-    USER,
+    // CRM
     ADMIN,
     VOLUNTEER,
+
+    // Logopedy
+    USER,
     SPECIALIST,
     PREMIUM
 }
