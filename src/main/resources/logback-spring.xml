@@ -17,8 +17,9 @@
         <file>${LOG_PATH}/current/${APP_NAME}.log</file>
         
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- Rolled files pattern: /var/log/aps-crm/2026/01/aps-crm-2026-01-06.log -->
-            <fileNamePattern>${LOG_PATH}/%d{yyyy}/%d{MM}/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- Rolled files pattern: /home/ubuntu/crm-logs/2026/01/aps-crm-2026-01-06.log -->
+            <!-- aux tokens are for folder structure only, main %d determines rolling period -->
+            <fileNamePattern>${LOG_PATH}/%d{yyyy, aux}/%d{MM, aux}/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
             <!-- Keep logs for 365 days -->
             <maxHistory>365</maxHistory>
             <!-- Total size cap for all log files: 10GB -->
@@ -49,7 +50,7 @@
         </filter>
         
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/%d{yyyy}/%d{MM}/${APP_NAME}-error-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/%d{yyyy, aux}/%d{MM, aux}/${APP_NAME}-error-%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>365</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
