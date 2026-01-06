@@ -2,17 +2,21 @@ package rotld.apscrm.api.v1.borderou;
 
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import rotld.apscrm.api.v1.borderou.dto.CrmSettingResponseDto;
 import rotld.apscrm.api.v1.borderou.mapper.TypeCoercer;
+import rotld.apscrm.api.v1.borderou.repository.CrmSetting;
 import rotld.apscrm.api.v1.borderou.repository.CrmSettingRepository;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/settings")
 public class CrmSettingController {
     private final CrmSettingRepository repo;
+    private static final String REQUIRE_ACTIVE_FOR_LOGIN = "require_active_for_login";
 
     public CrmSettingController(CrmSettingRepository repo) {
         this.repo = repo;
@@ -61,5 +65,43 @@ public class CrmSettingController {
         s.setValue(s.getDefaultValue());
         repo.save(s);
         return ResponseEntity.ok(CrmSettingResponseDto.of(s));
+    }
+
+    // Get require_active_for_login setting (for mobile app login restriction)
+    @GetMapping("/require-active-for-login")
+    public ResponseEntity<Map<String, Boolean>> getRequireActiveForLogin() {
+        var setting = repo.findByName(REQUIRE_ACTIVE_FOR_LOGIN);
+        boolean value = false;
+        if (setting.isPresent()) {
+            String val = setting.get().getValue();
+            value = val != null && ("true".equalsIgnoreCase(val) || "1".equals(val));
+        }
+        return ResponseEntity.ok(Map.of("requireActiveForLogin", value));
+    }
+
+    // Update require_active_for_login setting (admin only)
+    @PutMapping("/require-active-for-login")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Boolean>> setRequireActiveForLogin(@RequestBody Map<String, Boolean> body) {
+        Boolean value = body.get("requireActiveForLogin");
+        if (value == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        var setting = repo.findByName(REQUIRE_ACTIVE_FOR_LOGIN);
+        CrmSetting s;
+        if (setting.isPresent()) {
+            s = setting.get();
+        } else {
+            // Create if doesn't exist
+            s = CrmSetting.builder()
+                    .name(REQUIRE_ACTIVE_FOR_LOGIN)
+                    .type("boolean")
+                    .defaultValue("false")
+                    .build();
+        }
+        s.setValue(String.valueOf(value));
+        repo.save(s);
+        return ResponseEntity.ok(Map.of("requireActiveForLogin", value));
     }
 }

@@ -11,10 +11,12 @@ import rotld.apscrm.api.v1.auth.service.RefreshTokenService;
 import rotld.apscrm.api.v1.user.dto.*;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
+import rotld.apscrm.api.v1.borderou.repository.CrmSettingRepository;
 import rotld.apscrm.services.AuthenticationService;
 import rotld.apscrm.services.JwtService;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -24,6 +26,8 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
+    private final CrmSettingRepository crmSettingRepository;
+    private static final String REQUIRE_ACTIVE_FOR_LOGIN = "require_active_for_login";
 
     @PostMapping("/register")
     public User register(@RequestBody RegisterUserDto registerUserDto) {
@@ -44,6 +48,19 @@ public class AuthenticationController {
                 userRole != UserRole.SPECIALIST &&
                 userRole != UserRole.PREMIUM) {
                 throw new IllegalStateException("This account type can only access the web interface. Please use the web application.");
+            }
+            
+            // Check if require_active_for_login flag is enabled
+            Optional<rotld.apscrm.api.v1.borderou.repository.CrmSetting> settingOpt = 
+                crmSettingRepository.findByName(REQUIRE_ACTIVE_FOR_LOGIN);
+            if (settingOpt.isPresent()) {
+                String settingValue = settingOpt.get().getValue();
+                boolean requireActive = settingValue != null && 
+                    ("true".equalsIgnoreCase(settingValue) || "1".equals(settingValue));
+                
+                if (requireActive && authenticatedUser.getUserStatus() != UserStatus.ACTIVE) {
+                    throw new IllegalStateException("Only active accounts can log in. Please contact an administrator to activate your account.");
+                }
             }
         } else if ("WEB".equals(platform)) {
             // Web app: only ADMIN or VOLUNTEER allowed
