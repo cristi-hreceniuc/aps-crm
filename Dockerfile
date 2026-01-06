@@ -3,10 +3,8 @@ WORKDIR /build
 
 COPY . .
 
-# asigură-te că gradlew e executabil
 RUN chmod +x ./gradlew
 
-# build (fără teste)
 RUN ./gradlew clean bootJar -x test
 
 FROM eclipse-temurin:24-jre
