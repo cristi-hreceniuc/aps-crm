@@ -7,7 +7,8 @@
     <!-- Console Appender - keeps existing console output -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <!-- Format: timestamp [thread] LEVEL [requestId] METHOD URI - logger - message -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{requestId:-NO_REQ}] %X{method:-} %X{uri:-} - %logger{30} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -29,7 +30,8 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+            <!-- Format: timestamp [thread] LEVEL [requestId] METHOD URI | IP: clientIp | User: user - logger - message -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{requestId:-NO_REQ}] %X{method:-} %X{uri:-} | IP: %X{clientIp:-} | User: %X{user:-} - %logger{40} - %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -57,7 +59,8 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n%ex{full}</pattern>
+            <!-- Error logs include full context for debugging -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{requestId:-NO_REQ}] %X{method:-} %X{uri:-}?%X{query:-} | IP: %X{clientIp:-} | User: %X{user:-} - %logger{40} - %msg%n%ex{full}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>

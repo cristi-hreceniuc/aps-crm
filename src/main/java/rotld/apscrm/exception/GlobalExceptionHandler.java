@@ -34,12 +34,25 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
     private ProblemDetail createProblemDetail(HttpStatus status, String title, Exception ex, HttpServletRequest request) {
-        log.error("Exception: {} - Title: {}", ex.getClass().getSimpleName(), title, ex);
+        // Log detailed error info - MDC already contains requestId, method, uri, clientIp, user
+        String queryString = request.getQueryString();
+        String fullPath = queryString != null ? request.getRequestURI() + "?" + queryString : request.getRequestURI();
+        
+        log.error("EXCEPTION HANDLER: {} {} | Status: {} | Exception: {} | Title: {} | Message: {}",
+                request.getMethod(),
+                fullPath,
+                status.value(),
+                ex.getClass().getSimpleName(),
+                title,
+                ex.getMessage(),
+                ex);  // This logs the full stack trace
+        
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
         problemDetail.setTitle(title);
         problemDetail.setInstance(URI.create(request.getRequestURI()));
         problemDetail.setProperty("timestamp", Instant.now());
         problemDetail.setProperty("method", request.getMethod());
+        problemDetail.setProperty("path", fullPath);
         return problemDetail;
     }
     @ExceptionHandler
