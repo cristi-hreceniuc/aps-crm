@@ -56,11 +56,15 @@ public class AuthenticationService {
             throw new DuplicateEmailException(input.email());
         }
 
-        // Validate role - only USER, SPECIALIST, or PREMIUM allowed for registration
+        // Validate role - USER, SPECIALIST, PREMIUM (mobile app) or VOLUNTEER (CRM web)
         UserRole role = input.userRole() != null ? input.userRole() : UserRole.USER;
-        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.PREMIUM) {
-            throw new IllegalArgumentException("Invalid user role. Only USER, SPECIALIST, or PREMIUM roles are allowed.");
+        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.PREMIUM && role != UserRole.VOLUNTEER) {
+            throw new IllegalArgumentException("Invalid user role. Only USER, SPECIALIST, PREMIUM, or VOLUNTEER roles are allowed.");
         }
+
+        // VOLUNTEER accounts (created by admins via CRM) are ACTIVE immediately
+        // Mobile app accounts (USER, SPECIALIST, PREMIUM) start as PENDING
+        UserStatus status = (role == UserRole.VOLUNTEER) ? UserStatus.ACTIVE : UserStatus.PENDING;
 
         User user = User.builder()
                 .lastName(input.lastName())
@@ -69,7 +73,7 @@ public class AuthenticationService {
                 .email(input.email())
                 .password(passwordEncoder.encode(input.password()))
                 .userRole(role)
-                .userStatus(UserStatus.PENDING)
+                .userStatus(status)
                 .isPremium(Boolean.FALSE)
                 .build();
 

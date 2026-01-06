@@ -44,13 +44,11 @@ security:
     expiration-time: ${JWT_EXPIRATION_TIME}
     refresh-expiration-time: ${JWT_REFRESH_TIME}
 
+# Logging configuration is handled by logback-spring.xml
+# Log path can be overridden via LOG_PATH environment variable (default: /home/ubuntu/crm-logs)
 logging:
-  level:
-    org.springframework.web: DEBUG
-    org.hibernate: ERROR
-    org.springframework.security: DEBUG
-    org.springframework.mail: DEBUG
-    org.springframework.mail.javamail: DEBUG
+  file:
+    path: ${LOG_PATH:/home/ubuntu/crm-logs}
 app:
   reset:
     frontend-url: ${FRONTEND_URL}

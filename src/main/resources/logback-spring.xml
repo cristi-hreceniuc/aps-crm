@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Define the base log directory - can be overridden via environment variable -->
+    <property name="LOG_PATH" value="${LOG_PATH:-/home/ubuntu/crm-logs}"/>
+    <property name="APP_NAME" value="aps-crm"/>
+
+    <!-- Console Appender - keeps existing console output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Rolling File Appender - organizes logs by year/month with daily files -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Current day's log file -->
+        <file>${LOG_PATH}/current/${APP_NAME}.log</file>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Rolled files pattern: /var/log/aps-crm/2026/01/aps-crm-2026-01-06.log -->
+            <fileNamePattern>${LOG_PATH}/%d{yyyy}/%d{MM}/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- Keep logs for 365 days -->
+            <maxHistory>365</maxHistory>
+            <!-- Total size cap for all log files: 10GB -->
+            <totalSizeCap>10GB</totalSizeCap>
+            <!-- Clean up old logs on startup -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Async wrapper for FILE appender to improve performance -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <!-- Error-only file appender - separate file for errors -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/current/${APP_NAME}-error.log</file>
+        
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/%d{yyyy}/%d{MM}/${APP_NAME}-error-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>365</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n%ex{full}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Root logger configuration -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
+
+    <!-- Spring-specific logging levels (from application.yml) -->
+    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="org.hibernate" level="ERROR"/>
+    <logger name="org.springframework.security" level="DEBUG"/>
+    <logger name="org.springframework.mail" level="DEBUG"/>
+    <logger name="org.springframework.mail.javamail" level="DEBUG"/>
+    
+    <!-- Application-specific logger -->
+    <logger name="rotld" level="DEBUG"/>
+
+</configuration>
+
