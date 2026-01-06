@@ -18,6 +18,7 @@ import rotld.apscrm.api.v1.logopedy.repository.ProfileRepo;
 import rotld.apscrm.api.v1.logopedy.service.S3Service;
 import rotld.apscrm.api.v1.notification.service.PushNotificationService;
 import rotld.apscrm.api.v1.user.dto.UserResponseDto;
+import rotld.apscrm.api.v1.user.dto.UserRole;
 import rotld.apscrm.api.v1.user.mapper.UserMapper;
 import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.repository.UserRepository;
@@ -86,6 +87,16 @@ public class UserService {
 
     public Page<UserResponseDto> search(Pageable pageable, String q) {
         Page<User> page = userRepository.findAll(spec(q), remap(pageable));
+        return page.map(user -> UserMapper.toDto(user, s3Service));
+    }
+
+    /**
+     * Search users filtered by specific roles (e.g., ADMIN, VOLUNTEER for web users)
+     */
+    public Page<UserResponseDto> searchByRoles(Pageable pageable, String q, List<UserRole> roles) {
+        Specification<User> roleSpec = (root, query, cb) -> root.get("userRole").in(roles);
+        Specification<User> combined = roleSpec.and(spec(q));
+        Page<User> page = userRepository.findAll(combined, remap(pageable));
         return page.map(user -> UserMapper.toDto(user, s3Service));
     }
 

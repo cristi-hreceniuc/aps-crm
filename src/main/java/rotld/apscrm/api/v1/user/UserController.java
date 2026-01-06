@@ -15,6 +15,8 @@ import rotld.apscrm.api.v1.user.repository.User;
 import rotld.apscrm.api.v1.user.service.UserService;
 import rotld.apscrm.common.SecurityUtils;
 
+import rotld.apscrm.api.v1.user.dto.UserRole;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,14 @@ public class UserController {
     @GetMapping("/search")
     public Page<UserResponseDto> search(@RequestParam(name="q", required=false) String q, Pageable pageable){
         return userService.search(pageable, q);
+    }
+
+    /**
+     * Search only web users (ADMIN, VOLUNTEER) - for CRM settings page
+     */
+    @GetMapping("/web/search")
+    public Page<UserResponseDto> searchWebUsers(@RequestParam(name="q", required=false) String q, Pageable pageable){
+        return userService.searchByRoles(pageable, q, List.of(UserRole.ADMIN, UserRole.VOLUNTEER));
     }
 
     @PutMapping("/{id}/status")

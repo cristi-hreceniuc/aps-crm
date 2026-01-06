@@ -51,7 +51,7 @@ public class KpiService {
     """;
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         return KpiResponseDto.Volunteers.builder()
-                .total(((Number)row.get("total")).longValue())
+                .total(row.get("total") == null ? 0L : ((Number)row.get("total")).longValue())
                 .avgAge(row.get("avg_age") == null ? null : ((Number)row.get("avg_age")).doubleValue())
                 .avgDisponibilityHours(row.get("avg_hours") == null ? null : ((Number)row.get("avg_hours")).doubleValue())
                 .build();
@@ -103,9 +103,9 @@ public class KpiService {
 
         Map<String,Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         return KpiResponseDto.F177.builder()
-                .companies(((Number)row.get("companies")).longValue())
-                .totalAmount(row.get("total_sum")==null?0L:((Number)row.get("total_sum")).longValue())
-                .lastMonthAmount(row.get("last_month_sum")==null?0L:((Number)row.get("last_month_sum")).longValue())
+                .companies(row.get("companies") == null ? 0L : ((Number)row.get("companies")).longValue())
+                .totalAmount(row.get("total_sum") == null ? 0L : ((Number)row.get("total_sum")).longValue())
+                .lastMonthAmount(row.get("last_month_sum") == null ? 0L : ((Number)row.get("last_month_sum")).longValue())
                 .build();
     }
 
@@ -174,10 +174,10 @@ public class KpiService {
     """;
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         return KpiResponseDto.F230.builder()
-                .total1y(((Number)row.get("one_y")).longValue())
-                .total2y(((Number)row.get("two_y")).longValue())
-                .expiringThisYear(((Number)row.get("exp_year")).longValue())
-                .thisMonth(((Number)row.get("this_month")).longValue())
+                .total1y(row.get("one_y") == null ? 0L : ((Number)row.get("one_y")).longValue())
+                .total2y(row.get("two_y") == null ? 0L : ((Number)row.get("two_y")).longValue())
+                .expiringThisYear(row.get("exp_year") == null ? 0L : ((Number)row.get("exp_year")).longValue())
+                .thisMonth(row.get("this_month") == null ? 0L : ((Number)row.get("this_month")).longValue())
                 .build();
     }
 
@@ -190,7 +190,7 @@ public class KpiService {
     """;
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         return KpiResponseDto.Iban.builder()
-                .total(((Number)row.get("total")).longValue())
+                .total(row.get("total") == null ? 0L : ((Number)row.get("total")).longValue())
                 .build();
     }
 
@@ -229,8 +229,8 @@ public class KpiService {
         Map<String, Object> row = jdbc.queryForMap(sql, new MapSqlParameterSource());
         Map<String, Object> row1 = jdbc.queryForMap(sql1, new MapSqlParameterSource());
         return KpiResponseDto.Persoane.builder()
-                .users(((Number)row.get("total")).longValue())
-                .admins(((Number)row1.get("total")).longValue())
+                .users(row.get("total") == null ? 0L : ((Number)row.get("total")).longValue())
+                .admins(row1.get("total") == null ? 0L : ((Number)row1.get("total")).longValue())
                 .build();
     }
 }
