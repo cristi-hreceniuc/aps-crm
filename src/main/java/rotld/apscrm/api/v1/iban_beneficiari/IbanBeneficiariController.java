@@ -57,4 +57,18 @@ public class IbanBeneficiariController {
         IbanBeneficiariResponseDto saved = service.create(name, iban);
         return ResponseEntity.ok(saved);
     }
+
+    @PutMapping("/{id}/hide")
+    public ResponseEntity<Void> toggleHide(@PathVariable Integer id,
+                                           @RequestBody Map<String, Object> body) {
+        Object hideValue = body.get("hidden");
+        Boolean hide = false;
+        if (hideValue instanceof Boolean) {
+            hide = (Boolean) hideValue;
+        } else if (hideValue instanceof String) {
+            hide = "true".equalsIgnoreCase((String) hideValue) || "1".equals(hideValue);
+        }
+        service.toggleHide(id, hide);
+        return ResponseEntity.noContent().build();
+    }
 }

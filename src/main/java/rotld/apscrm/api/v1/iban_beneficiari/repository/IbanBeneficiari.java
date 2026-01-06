@@ -13,10 +13,12 @@ import org.hibernate.annotations.Subselect;
     s.ID                                                   AS id,
     DATE_FORMAT(s.post_date, '%Y-%m-%dT%H:%i:%s')          AS post_date_iso,
     nume.meta_value                                        AS name,
-    iban.meta_value                                        AS iban
+    iban.meta_value                                        AS iban,
+    COALESCE(hide.meta_value, '0') = '1'                   AS hidden
   FROM wordpress.wp_posts s
   LEFT JOIN wordpress.wp_postmeta nume ON nume.post_id = s.ID AND nume.meta_key = 'nume'
   LEFT JOIN wordpress.wp_postmeta iban ON iban.post_id = s.ID AND iban.meta_key = 'iban'
+  LEFT JOIN wordpress.wp_postmeta hide ON hide.post_id = s.ID AND hide.meta_key = 'hide'
   WHERE s.post_type   = 'iban_beneficiar'
     AND s.post_status IN ('publish','draft')
 """)
@@ -25,4 +27,5 @@ public class IbanBeneficiari {
     @Column(name="post_date_iso") private String postDateIso;
     @Column(name="name") private String name;
     @Column(name="iban")  private String iban;
+    @Column(name="hidden") private Boolean hidden;
 }

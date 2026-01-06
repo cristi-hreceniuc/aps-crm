@@ -32,6 +32,7 @@ public class IbanBeneficiariService {
                 case "name" -> "name";
                 case "iban" -> "iban";
                 case "id"   -> "id";
+                case "hidden" -> "hidden";
                 default -> null;
             };
             if (p != null) good.add(new Sort.Order(o.getDirection(), p));
@@ -43,7 +44,7 @@ public class IbanBeneficiariService {
     public Page<IbanBeneficiariResponseDto> list(Pageable pageable){
         Page<IbanBeneficiari> page = viewRepo.findAll(remap(pageable));
         return page.map(v -> IbanBeneficiariResponseDto.builder()
-                .id(v.getId()).name(v.getName()).iban(v.getIban()).addedAt(v.getPostDateIso()).build());
+                .id(v.getId()).name(v.getName()).iban(v.getIban()).addedAt(v.getPostDateIso()).hidden(v.getHidden()).build());
     }
 
     public Page<IbanBeneficiariResponseDto> search(Pageable pageable, String q){
@@ -59,7 +60,7 @@ public class IbanBeneficiariService {
         };
         Page<IbanBeneficiari> page = viewRepo.findAll(spec, remap(pageable));
         return page.map(v -> IbanBeneficiariResponseDto.builder()
-                .id(v.getId()).name(v.getName()).iban(v.getIban()).addedAt(v.getPostDateIso()).build());
+                .id(v.getId()).name(v.getName()).iban(v.getIban()).addedAt(v.getPostDateIso()).hidden(v.getHidden()).build());
     }
 
     @Transactional
@@ -115,10 +116,17 @@ public class IbanBeneficiariService {
                                     .name(v.getName())
                                     .iban(v.getIban())
                                     .addedAt(v.getPostDateIso())
+                                    .hidden(v.getHidden())
                                     .build();
                         }
                 )
                 .toList();
 
+    }
+
+    @Transactional
+    public void toggleHide(Integer postId, Boolean hide) {
+        String value = (hide != null && hide) ? "1" : "0";
+        upsertMeta(postId, "hide", value);
     }
 }

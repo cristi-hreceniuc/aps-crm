@@ -12,4 +12,5 @@ public class IbanBeneficiariResponseDto {
     private String  name;
     private String  iban;
     private String  addedAt;
+    private Boolean hidden;
 }
