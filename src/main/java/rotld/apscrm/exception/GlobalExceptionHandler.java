@@ -119,6 +119,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler
+    public ProblemDetail handlePremiumRequiredException(PremiumRequiredException ex, HttpServletRequest request) {
+        return createProblemDetail(HttpStatus.FORBIDDEN, "Premium access required.", ex, request);
+    }
+
+    @ExceptionHandler
     public ProblemDetail handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest request) {
         // Check if this is a duplicate email error
         String message = ex.getMessage();
