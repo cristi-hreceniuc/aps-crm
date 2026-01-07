@@ -29,6 +29,9 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/kid/**").hasAuthority("KID")
+                        .requestMatchers("/api/v1/keys/**").hasAuthority("SPECIALIST_BUNDLE")
+                        .requestMatchers("/api/v1/admin/bundles/**").hasAuthority("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

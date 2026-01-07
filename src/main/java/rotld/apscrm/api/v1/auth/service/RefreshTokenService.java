@@ -22,6 +22,17 @@ public class RefreshTokenService {
         return repo.save(rt);
     }
 
+    /**
+     * Create refresh token for kid authentication.
+     * Uses "kid:{keyId}" as userId convention.
+     */
+    public RefreshToken createForKid(Long keyId) {
+        // Default to 30 days expiration for kids
+        long kidRefreshExpMs = 30L * 24 * 60 * 60 * 1000; // 30 days
+        String kidUserId = "kid:" + keyId;
+        return create(kidUserId, kidRefreshExpMs);
+    }
+
     public RefreshToken validateUsable(String token) {
         var rt = repo.findByToken(token).orElseThrow(() -> new IllegalArgumentException("invalid_refresh"));
         if (rt.isRevoked() || rt.getExpiresAt().isBefore(Instant.now())) {

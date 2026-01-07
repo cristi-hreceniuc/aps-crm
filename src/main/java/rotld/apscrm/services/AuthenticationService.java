@@ -1,6 +1,5 @@
 package rotld.apscrm.services;
 
-import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,9 +55,9 @@ public class AuthenticationService {
             throw new DuplicateEmailException(input.email());
         }
 
-        // Validate role - USER, SPECIALIST, PREMIUM (mobile app) or VOLUNTEER (CRM web)
+        // Validate role - USER, SPECIALIST, or VOLUNTEER (CRM web)
         UserRole role = input.userRole() != null ? input.userRole() : UserRole.USER;
-        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.PREMIUM && role != UserRole.VOLUNTEER) {
+        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.VOLUNTEER) {
             throw new IllegalArgumentException("Invalid user role. Only USER, SPECIALIST, PREMIUM, or VOLUNTEER roles are allowed.");
         }
 
@@ -317,7 +316,7 @@ public class AuthenticationService {
 
         // Validate role - only USER, SPECIALIST, or PREMIUM allowed for registration
         UserRole role = input.userRole() != null ? input.userRole() : UserRole.USER;
-        if (role != UserRole.USER && role != UserRole.SPECIALIST && role != UserRole.PREMIUM) {
+        if (role != UserRole.USER && role != UserRole.SPECIALIST) {
             throw new IllegalArgumentException("Invalid user role. Only USER, SPECIALIST, or PREMIUM roles are allowed.");
         }
 
@@ -584,5 +583,106 @@ public class AuthenticationService {
       </div>
     </body></html>
     """.formatted(firstName == null || firstName.isEmpty() ? "" : " " + firstName, code, ttlMinutes);
+    }
+
+    // ============== KID AUTHENTICATION ==============
+
+    /**
+     * Authenticate a kid using their license key UUID.
+     * Returns tokens with kid-specific claims.
+     */
+    public KidTokens authenticateKid(String keyUuid, 
+                                      rotld.apscrm.api.v1.logopedy.repository.LicenseKeyRepo keyRepo) {
+        var key = keyRepo.findByKeyUuidAndIsActiveTrue(keyUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Cheie invalidă sau dezactivată"));
+
+        if (key.getProfile() == null) {
+            throw new IllegalArgumentException("Cheia nu este activată pentru niciun profil");
+        }
+
+        // Premium is inherited from the specialist's is_premium flag
+        boolean isPremium = Boolean.TRUE.equals(key.getSpecialist().getIsPremium());
+
+        java.util.Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("profile_id", key.getProfile().getId());
+        claims.put("key_id", key.getId());
+        claims.put("is_kid", true);
+        claims.put("is_premium", isPremium);
+        claims.put("specialist_id", key.getSpecialist().getId());
+
+        String subject = "kid:" + key.getProfile().getId();
+        String accessToken = jwtService.generateKidToken(claims, subject);
+        
+        // Create a refresh token for the kid (using key ID as reference)
+        RefreshToken refreshToken = refreshTokenService.createForKid(key.getId());
+
+        return new KidTokens(
+                accessToken,
+                jwtService.getExpirationTime(),
+                refreshToken.getToken(),
+                jwtService.getRefreshExpirationTime(),
+                key.getProfile().getId(),
+                key.getProfile().getName(),
+                isPremium
+        );
+    }
+
+    public record KidTokens(
+            String accessToken,
+            long accessExpiresIn,
+            String refreshToken,
+            long refreshExpiresIn,
+            Long profileId,
+            String profileName,
+            boolean isPremium
+    ) {}
+
+    /**
+     * Refresh a kid's access token using their refresh token.
+     */
+    public KidTokens refreshKidToken(String refreshTokenStr, 
+                                      rotld.apscrm.api.v1.logopedy.repository.LicenseKeyRepo keyRepo) {
+        RefreshToken oldRt = refreshTokenService.validateUsable(refreshTokenStr);
+        
+        // Kid refresh tokens have userId in format "kid:{keyId}"
+        String kidUserId = oldRt.getUserId();
+        if (!kidUserId.startsWith("kid:")) {
+            throw new IllegalArgumentException("Token invalid pentru copil");
+        }
+        
+        Long keyId = Long.parseLong(kidUserId.substring(4));
+        var key = keyRepo.findById(keyId)
+                .orElseThrow(() -> new IllegalArgumentException("Cheia nu mai există"));
+        
+        if (!key.isActive() || key.getProfile() == null) {
+            throw new IllegalArgumentException("Cheia este dezactivată sau nu are profil asociat");
+        }
+        
+        // Premium is inherited from the specialist's is_premium flag
+        boolean isPremium = Boolean.TRUE.equals(key.getSpecialist().getIsPremium());
+
+        java.util.Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("profile_id", key.getProfile().getId());
+        claims.put("key_id", key.getId());
+        claims.put("is_kid", true);
+        claims.put("is_premium", isPremium);
+        claims.put("specialist_id", key.getSpecialist().getId());
+
+        String subject = "kid:" + key.getProfile().getId();
+        String accessToken = jwtService.generateKidToken(claims, subject);
+        
+        // Rotate the refresh token
+        long kidRefreshExpMs = 30L * 24 * 60 * 60 * 1000; // 30 days
+        RefreshToken newRt = refreshTokenService.rotate(oldRt, kidUserId, kidRefreshExpMs);
+
+        return new KidTokens(
+                accessToken,
+                jwtService.getExpirationTime(),
+                newRt.getToken(),
+                jwtService.getRefreshExpirationTime(),
+                key.getProfile().getId(),
+                key.getProfile().getName(),
+                isPremium
+        );
     }
 }

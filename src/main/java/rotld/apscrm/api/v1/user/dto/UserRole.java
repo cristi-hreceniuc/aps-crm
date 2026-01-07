@@ -8,5 +8,5 @@ public enum UserRole {
     // Logopedy
     USER,
     SPECIALIST,
-    PREMIUM
+    SPECIALIST_BUNDLE
 }

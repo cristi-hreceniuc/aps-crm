@@ -3,7 +3,6 @@ package rotld.apscrm.api.v1.auth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import rotld.apscrm.api.v1.auth.dto.RefreshRequest;
 import rotld.apscrm.api.v1.auth.dto.TokenResponse;
@@ -45,8 +44,7 @@ public class AuthenticationController {
         if ("MOBILE".equals(platform)) {
             // Mobile app: only USER, SPECIALIST, or PREMIUM allowed
             if (userRole != UserRole.USER &&
-                userRole != UserRole.SPECIALIST &&
-                userRole != UserRole.PREMIUM) {
+                userRole != UserRole.SPECIALIST) {
                 throw new IllegalStateException("This account type can only access the web interface. Please use the web application.");
             }
             

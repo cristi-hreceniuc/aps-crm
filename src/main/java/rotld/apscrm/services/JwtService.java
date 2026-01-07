@@ -35,10 +35,6 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
-    }
-
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return buildToken(extraClaims, userDetails, jwtExpiration);
     }
@@ -66,9 +62,17 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
-    public String generateRefreshToken(UserDetails user) {
-        // poți pune claimuri minimale; sub = email
-        return buildToken(new HashMap<>(), user, refreshExpiration);
+    /**
+     * Generate a token for kid authentication (no UserDetails, just custom claims)
+     */
+    public String generateKidToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey())
+                .compact();
     }
 
     public long getRefreshExpirationTime() { return refreshExpiration; }

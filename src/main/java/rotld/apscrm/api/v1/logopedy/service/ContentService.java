@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rotld.apscrm.api.v1.logopedy.dto.*;
@@ -341,6 +340,181 @@ public class ContentService {
                 lessonDTOs,
                 totalLessons,
                 completedLessons
+        );
+    }
+
+    // ============== KID-SPECIFIC METHODS ==============
+
+    /**
+     * List modules for kid (no user check, uses isPremium flag from kid token)
+     */
+    public List<ModuleDTO> listModulesForKid(Long profileId, boolean isPremium) {
+        // Get all active non-specialist modules
+        var modules = moduleRepo.findAllByIsActiveTrueOrderByPositionAsc().stream()
+                .filter(m -> m.getTargetAudience() == null || m.getTargetAudience() != TargetAudience.SPECIALIST);
+        
+        // Filter by premium access
+        if (!isPremium) {
+            modules = modules.filter(m -> !m.isPremium());
+        }
+        
+        return modules
+                .map(m -> new ModuleDTO(
+                        m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
+                        m.getTargetAudience(), null))
+                .toList();
+    }
+
+    /**
+     * Get module for kid
+     */
+    public ModuleDTO getModuleForKid(Long profileId, Long moduleId, boolean isPremium) {
+        Module m = moduleRepo.findById(moduleId).orElseThrow(() -> new EntityNotFoundException("Module"));
+        
+        // Check premium access
+        if (m.isPremium() && !isPremium) {
+            throw new PremiumRequiredException();
+        }
+
+        List<SubmoduleDTO> subs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(moduleId)
+                .stream().map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), null))
+                .toList();
+
+        return new ModuleDTO(m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
+                m.getTargetAudience(), subs);
+    }
+
+    /**
+     * Get submodule for kid
+     */
+    public SubmoduleListDTO getSubmoduleForKid(Long profileId, Long submoduleId, boolean isPremium) {
+        Submodule s = submoduleRepo.findById(submoduleId).orElseThrow(() -> new EntityNotFoundException("Submodule"));
+        Module m = s.getModule();
+        
+        // Check premium access
+        if (m.isPremium() && !isPremium) {
+            throw new PremiumRequiredException();
+        }
+
+        // Get all parts for this submodule
+        List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        
+        // Get lesson statuses for progress tracking
+        Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
+                .filter(pls -> pls.getStatus() == LessonStatus.DONE)
+                .map(pls -> pls.getId().getLessonId())
+                .collect(Collectors.toSet());
+
+        List<PartListItemDTO> partDTOs = parts.stream()
+                .map(part -> {
+                    long totalLessons = lessonRepo.countByPartIdAndIsActiveTrue(part.getId());
+                    
+                    List<Lesson> partLessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+                    long completedLessons = partLessons.stream()
+                            .filter(l -> doneLessons.contains(l.getId()))
+                            .count();
+                    
+                    return new PartListItemDTO(
+                            part.getId(),
+                            part.getName(),
+                            part.getSlug(),
+                            part.getDescription(),
+                            part.getPosition(),
+                            (int) totalLessons,
+                            (int) completedLessons
+                    );
+                })
+                .filter(partDTO -> partDTO.getTotalLessons() > 0)
+                .toList();
+
+        return new SubmoduleListDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), partDTOs);
+    }
+
+    /**
+     * Get part for kid
+     */
+    public PartDTO getPartForKid(Long profileId, Long partId, boolean isPremium) {
+        Part part = partRepo.findById(partId)
+                .orElseThrow(() -> new EntityNotFoundException("Part not found"));
+        
+        Module m = part.getSubmodule().getModule();
+        if (m.isPremium() && !isPremium) {
+            throw new PremiumRequiredException();
+        }
+        
+        // Get all lessons in this part
+        List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(partId);
+        
+        // Get lesson statuses for progress tracking
+        Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
+                .filter(pls -> pls.getStatus() == LessonStatus.DONE)
+                .map(pls -> pls.getId().getLessonId())
+                .collect(Collectors.toSet());
+        
+        boolean unlockedGiven = false;
+        List<LessonListItemDTO> lessonDTOs = new ArrayList<>();
+        
+        for (Lesson l : lessons) {
+            LessonStatus status;
+            if (doneLessons.contains(l.getId())) {
+                status = LessonStatus.DONE;
+            } else if (!unlockedGiven) {
+                status = LessonStatus.UNLOCKED;
+                unlockedGiven = true;
+            } else {
+                status = LessonStatus.LOCKED;
+            }
+            
+            lessonDTOs.add(new LessonListItemDTO(
+                    l.getId(), 
+                    l.getTitle(), 
+                    l.getHint(), 
+                    l.getLessonType(), 
+                    l.getPosition(), 
+                    status
+            ));
+        }
+        
+        int totalLessons = lessonDTOs.size();
+        int completedLessons = (int) lessonDTOs.stream()
+                .filter(l -> l.status() == LessonStatus.DONE)
+                .count();
+        
+        return new PartDTO(
+                part.getId(),
+                part.getName(),
+                part.getSlug(),
+                part.getDescription(),
+                part.getPosition(),
+                lessonDTOs,
+                totalLessons,
+                completedLessons
+        );
+    }
+
+    /**
+     * Get lesson for kid
+     */
+    public LessonPlayDTO getLessonForKid(Long profileId, Long lessonId, boolean isPremium) {
+        Lesson l = lessonRepo.findById(lessonId)
+                .orElseThrow(() -> new EntityNotFoundException("Lesson with id %s not found.".formatted(lessonId)));
+        
+        Module m = l.getSubmodule().getModule();
+        if (m.isPremium() && !isPremium) {
+            throw new PremiumRequiredException();
+        }
+
+        var screens = screenRepo.findByLessonIdOrderByPositionAsc(lessonId).stream()
+                .map(sc -> new ScreenDTO(
+                        sc.getId(),
+                        sc.getScreenType(),
+                        parseAndResolve(sc.getPayload()),
+                        sc.getPosition()
+                ))
+                .toList();
+
+        return new LessonPlayDTO(
+                l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), l.getPosition(), screens
         );
     }
 
