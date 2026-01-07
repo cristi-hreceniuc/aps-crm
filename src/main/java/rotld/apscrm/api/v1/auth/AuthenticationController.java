@@ -42,9 +42,10 @@ public class AuthenticationController {
         UserRole userRole = authenticatedUser.getUserRole();
 
         if ("MOBILE".equals(platform)) {
-            // Mobile app: only USER, SPECIALIST, or PREMIUM allowed
+            // Mobile app: only USER, SPECIALIST, SPECIALIST_BUNDLE, or PREMIUM allowed
             if (userRole != UserRole.USER &&
-                userRole != UserRole.SPECIALIST) {
+                userRole != UserRole.SPECIALIST &&
+                userRole != UserRole.SPECIALIST_BUNDLE) {
                 throw new IllegalStateException("This account type can only access the web interface. Please use the web application.");
             }
             
