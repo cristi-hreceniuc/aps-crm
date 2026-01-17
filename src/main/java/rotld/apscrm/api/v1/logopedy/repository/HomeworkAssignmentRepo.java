@@ -11,7 +11,10 @@ import java.util.List;
 @Repository
 public interface HomeworkAssignmentRepo extends JpaRepository<HomeworkAssignment, Long> {
     
-    List<HomeworkAssignment> findByProfileIdOrderByAssignedAtDesc(Long profileId);
+    /**
+     * Active homework only (not closed by specialist yet).
+     */
+    List<HomeworkAssignment> findByProfileIdAndSpecialistDoneAtIsNullOrderByAssignedAtDesc(Long profileId);
     
     @Modifying
     @Query("DELETE FROM HomeworkAssignment ha WHERE ha.profile.id = :profileId")

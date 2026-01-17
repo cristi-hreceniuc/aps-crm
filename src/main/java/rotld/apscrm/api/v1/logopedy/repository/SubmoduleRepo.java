@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface SubmoduleRepo extends JpaRepository<Submodule, Long> {
     List<Submodule> findAllByModule_IdOrderByPositionAsc(Long moduleId);
+    
+    List<Submodule> findByModuleId(Long moduleId);
 }

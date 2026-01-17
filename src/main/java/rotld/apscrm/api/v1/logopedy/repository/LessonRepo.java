@@ -43,4 +43,12 @@ public interface LessonRepo extends JpaRepository<Lesson, Long> {
      where l.part.id = :partId and l.isActive = true
   """)
     long countByPartIdAndIsActiveTrue(Long partId);
+    
+    List<Lesson> findByPartIdAndIsActiveTrue(Long partId);
+    
+    @Query("select l from Lesson l where l.submodule.id = :submoduleId and l.isActive = true")
+    List<Lesson> findBySubmoduleIdAndIsActiveTrue(Long submoduleId);
+    
+    @Query("select l from Lesson l where l.submodule.id in :submoduleIds and l.isActive = true")
+    List<Lesson> findBySubmoduleIdInAndIsActiveTrue(List<Long> submoduleIds);
 }

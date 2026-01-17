@@ -8,6 +8,7 @@ import rotld.apscrm.api.v1.logopedy.entities.ProfileLessonKey;
 import rotld.apscrm.api.v1.logopedy.entities.ProfileLessonStatus;
 import rotld.apscrm.api.v1.logopedy.enums.LessonStatus;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface ProfileLessonStatusRepo extends JpaRepository<ProfileLessonStatus, ProfileLessonKey> {
@@ -37,4 +38,6 @@ public interface ProfileLessonStatusRepo extends JpaRepository<ProfileLessonStat
     @Query("DELETE FROM ProfileLessonStatus pls WHERE pls.id.profileId = :profileId")
     void deleteAllByProfileId(@Param("profileId") Long profileId);
 
+    @Query("select count(pls) from ProfileLessonStatus pls where pls.id.profileId = :profileId and pls.id.lessonId in :lessonIds and pls.status = :status")
+    long countByProfileIdAndLessonIdInAndStatus(@Param("profileId") Long profileId, @Param("lessonIds") Collection<Long> lessonIds, @Param("status") LessonStatus status);
 }

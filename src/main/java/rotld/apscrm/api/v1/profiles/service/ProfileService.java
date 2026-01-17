@@ -117,10 +117,12 @@ public class ProfileService {
         List<LessonProgressDTO> list = new ArrayList<>();
         for (Lesson l : lessons) {
             var s = l.getSubmodule(); var m = s.getModule();
+            var part = l.getPart();
             String st = statuses.getOrDefault(l.getId(), LessonStatus.LOCKED.name());
             list.add(new LessonProgressDTO(
                     m.getId(), m.getTitle(),
                     s.getId(), s.getTitle(),
+                    part != null ? part.getId() : null, part != null ? part.getName() : null,
                     l.getId(), l.getTitle(),
                     st
             ));

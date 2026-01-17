@@ -40,5 +40,15 @@ public class HomeworkAssignment {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    /**
+     * When the specialist confirms the homework is fully done/closed.
+     * Once set, the homework should disappear from active lists for both specialist and kid.
+     */
+    @Column(name = "specialist_done_at")
+    private LocalDateTime specialistDoneAt;
 }
 

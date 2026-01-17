@@ -14,6 +14,17 @@ public record HomeworkDTO(
     String partName,
     LocalDateTime assignedAt,
     LocalDate dueDate,
-    String notes
+    String notes,
+    // Progress tracking
+    int totalLessons,
+    int completedLessons,
+    /**
+     * Set when the kid marks the homework as completed.
+     */
+    LocalDateTime completedAt,
+    /**
+     * Set when the specialist confirms the homework is done/closed.
+     */
+    LocalDateTime specialistDoneAt
 ) {}
 

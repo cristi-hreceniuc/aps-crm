@@ -58,5 +58,15 @@ public class HomeworkController {
         homeworkService.removeHomework(homeworkId, specialist.getId());
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Mark a homework assignment as DONE/CLOSED by specialist (archives it; not deleted).
+     */
+    @PostMapping("/homework/{homeworkId}/done")
+    public ResponseEntity<HomeworkDTO> markHomeworkDone(
+            @PathVariable Long homeworkId,
+            @AuthenticationPrincipal User specialist) {
+        return ResponseEntity.ok(homeworkService.markAsDoneBySpecialist(homeworkId, specialist.getId()));
+    }
 }
 

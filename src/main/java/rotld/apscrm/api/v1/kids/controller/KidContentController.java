@@ -84,6 +84,26 @@ public class KidContentController {
     }
 
     /**
+     * Mark homework as complete
+     */
+    @PostMapping("/homework/{homeworkId}/complete")
+    public ResponseEntity<HomeworkDTO> markHomeworkComplete(
+            @PathVariable Long homeworkId,
+            @AuthenticationPrincipal KidPrincipal kid) {
+        return ResponseEntity.ok(homeworkService.markAsComplete(homeworkId, kid.getProfileId()));
+    }
+
+    /**
+     * Mark homework as incomplete
+     */
+    @PostMapping("/homework/{homeworkId}/incomplete")
+    public ResponseEntity<HomeworkDTO> markHomeworkIncomplete(
+            @PathVariable Long homeworkId,
+            @AuthenticationPrincipal KidPrincipal kid) {
+        return ResponseEntity.ok(homeworkService.markAsIncomplete(homeworkId, kid.getProfileId()));
+    }
+
+    /**
      * Get current progress
      */
     @GetMapping("/progress")
