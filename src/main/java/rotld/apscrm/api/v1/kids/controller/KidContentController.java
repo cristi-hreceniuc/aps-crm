@@ -66,6 +66,16 @@ public class KidContentController {
     }
 
     /**
+     * Get all asset URLs for a part (for prefetching images/audio)
+     */
+    @GetMapping("/parts/{partId}/assets")
+    public ResponseEntity<PartAssetsResponse> getPartAssets(
+            @PathVariable Long partId,
+            @AuthenticationPrincipal KidPrincipal kid) {
+        return ResponseEntity.ok(contentService.getPartAssetsForKid(partId, kid.isPremium()));
+    }
+
+    /**
      * Get a lesson for playing
      */
     @GetMapping("/lessons/{lessonId}")

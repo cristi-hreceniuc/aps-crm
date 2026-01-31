@@ -18,9 +18,11 @@ import rotld.apscrm.api.v1.logopedy.repository.*;
 import rotld.apscrm.exception.PremiumRequiredException;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +39,7 @@ public class ContentService {
     private final ProfileLessonStatusRepo profileLessonStatusRepo;
     private final AssetRepo assetRepo;
     private final S3Service s3Service;
+    private final OrderService orderService;
 
     private final com.fasterxml.jackson.databind.ObjectMapper om;
 
@@ -79,8 +82,10 @@ public class ContentService {
         Module m = moduleRepo.findById(moduleId).orElseThrow(() -> new EntityNotFoundException("Module"));
         checkPremiumAccess(p, m);
 
-        List<SubmoduleDTO> subs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(moduleId)
-                .stream().map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), null))
+        List<Submodule> orderedSubmodules = orderService.getOrderedSubmodulesForModule(moduleId);
+        AtomicInteger position = new AtomicInteger(0);
+        List<SubmoduleDTO> subs = orderedSubmodules.stream()
+                .map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), position.getAndIncrement(), null))
                 .toList();
 
         return new ModuleDTO(m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
@@ -93,8 +98,8 @@ public class ContentService {
         Module m = s.getModule();
         checkPremiumAccess(p, m);
 
-        // Get all parts for this submodule
-        List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        // Get all parts for this submodule using order arrays
+        List<Part> parts = orderService.getOrderedPartsForSubmodule(submoduleId);
         
         // Get lesson statuses for progress tracking
         Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
@@ -102,12 +107,11 @@ public class ContentService {
                 .map(pls -> pls.getId().getLessonId())
                 .collect(Collectors.toSet());
 
+        AtomicInteger partPosition = new AtomicInteger(0);
         List<PartListItemDTO> partDTOs = parts.stream()
                 .map(part -> {
-                    long totalLessons = lessonRepo.countByPartIdAndIsActiveTrue(part.getId());
-                    
-                    // Count completed lessons in this part
-                    List<Lesson> partLessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+                    // Get ordered lessons for this part
+                    List<Lesson> partLessons = orderService.getOrderedLessonsForPart(part.getId());
                     long completedLessons = partLessons.stream()
                             .filter(l -> doneLessons.contains(l.getId()))
                             .count();
@@ -117,8 +121,8 @@ public class ContentService {
                             part.getName(),
                             part.getSlug(),
                             part.getDescription(),
-                            part.getPosition(),
-                            (int) totalLessons,
+                            partPosition.getAndIncrement(),
+                            partLessons.size(),
                             (int) completedLessons
                     );
                 })
@@ -134,17 +138,20 @@ public class ContentService {
                 .orElseThrow(() -> new EntityNotFoundException("Lesson with id %s not found.".formatted(lessonId)));
         checkPremiumAccess(p, l.getSubmodule().getModule());
 
-        var screens = screenRepo.findByLessonIdOrderByPositionAsc(lessonId).stream()
+        List<LessonScreen> orderedScreens = orderService.getOrderedScreensForLesson(lessonId);
+        AtomicInteger screenPosition = new AtomicInteger(0);
+        var screens = orderedScreens.stream()
                 .map(sc -> new ScreenDTO(
                         sc.getId(),
                         sc.getScreenType(),
                         parseAndResolve(sc.getPayload()),
-                        sc.getPosition()
+                        screenPosition.getAndIncrement()
                 ))
                 .toList();
 
+        int lessonPosition = orderService.getLessonIndexInPart(lessonId);
         return new LessonPlayDTO(
-                l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), l.getPosition(), screens
+                l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), lessonPosition, screens
         );
     }
 
@@ -252,7 +259,7 @@ public class ContentService {
     public List<LessonListItemDTO> submoduleLessonsWithProgress(Long profileId, Long submoduleId, String userId) {
         requireProfile(profileId, userId);
 
-        var lessons = lessonRepo.findBySubmoduleIdOrderByPositionAsc(submoduleId);
+        var lessons = orderService.getOrderedLessonsForSubmodule(submoduleId);
 
         // status DONE pentru lecțiile terminate
         Set<Long> done = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
@@ -262,6 +269,7 @@ public class ContentService {
 
         boolean unlockedGiven = false;
         List<LessonListItemDTO> out = new ArrayList<>();
+        int position = 0;
 
         for (var l : lessons) {
             String s;
@@ -275,7 +283,7 @@ public class ContentService {
             }
 
             out.add(new LessonListItemDTO(
-                    l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), l.getPosition(), LessonStatus.valueOf(s)
+                    l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), position++, LessonStatus.valueOf(s)
             ));
         }
         return out;
@@ -293,8 +301,8 @@ public class ContentService {
         Module m = part.getSubmodule().getModule();
         checkPremiumAccess(p, m);
         
-        // Get all lessons in this part
-        List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(partId);
+        // Get all lessons in this part using order arrays
+        List<Lesson> lessons = orderService.getOrderedLessonsForPart(partId);
         
         // Get lesson statuses for progress tracking
         Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
@@ -304,6 +312,7 @@ public class ContentService {
         
         boolean unlockedGiven = false;
         List<LessonListItemDTO> lessonDTOs = new ArrayList<>();
+        int lessonPosition = 0;
         
         for (Lesson l : lessons) {
             LessonStatus status;
@@ -321,7 +330,7 @@ public class ContentService {
                     l.getTitle(), 
                     l.getHint(), 
                     l.getLessonType(), 
-                    l.getPosition(), 
+                    lessonPosition++, 
                     status
             ));
         }
@@ -376,8 +385,10 @@ public class ContentService {
             throw new PremiumRequiredException();
         }
 
-        List<SubmoduleDTO> subs = submoduleRepo.findAllByModule_IdOrderByPositionAsc(moduleId)
-                .stream().map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), s.getPosition(), null))
+        List<Submodule> orderedSubmodules = orderService.getOrderedSubmodulesForModule(moduleId);
+        AtomicInteger position = new AtomicInteger(0);
+        List<SubmoduleDTO> subs = orderedSubmodules.stream()
+                .map(s -> new SubmoduleDTO(s.getId(), s.getTitle(), s.getIntroText(), position.getAndIncrement(), null))
                 .toList();
 
         return new ModuleDTO(m.getId(), m.getTitle(), m.getIntroText(), m.getPosition(), m.isPremium(), 
@@ -396,8 +407,8 @@ public class ContentService {
             throw new PremiumRequiredException();
         }
 
-        // Get all parts for this submodule
-        List<Part> parts = partRepo.findBySubmoduleIdAndIsActiveTrueOrderByPositionAsc(submoduleId);
+        // Get all parts for this submodule using order arrays
+        List<Part> parts = orderService.getOrderedPartsForSubmodule(submoduleId);
         
         // Get lesson statuses for progress tracking
         Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
@@ -405,11 +416,10 @@ public class ContentService {
                 .map(pls -> pls.getId().getLessonId())
                 .collect(Collectors.toSet());
 
+        AtomicInteger partPosition = new AtomicInteger(0);
         List<PartListItemDTO> partDTOs = parts.stream()
                 .map(part -> {
-                    long totalLessons = lessonRepo.countByPartIdAndIsActiveTrue(part.getId());
-                    
-                    List<Lesson> partLessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(part.getId());
+                    List<Lesson> partLessons = orderService.getOrderedLessonsForPart(part.getId());
                     long completedLessons = partLessons.stream()
                             .filter(l -> doneLessons.contains(l.getId()))
                             .count();
@@ -419,8 +429,8 @@ public class ContentService {
                             part.getName(),
                             part.getSlug(),
                             part.getDescription(),
-                            part.getPosition(),
-                            (int) totalLessons,
+                            partPosition.getAndIncrement(),
+                            partLessons.size(),
                             (int) completedLessons
                     );
                 })
@@ -442,8 +452,8 @@ public class ContentService {
             throw new PremiumRequiredException();
         }
         
-        // Get all lessons in this part
-        List<Lesson> lessons = lessonRepo.findByPartIdAndIsActiveTrueOrderByPositionAsc(partId);
+        // Get all lessons in this part using order arrays
+        List<Lesson> lessons = orderService.getOrderedLessonsForPart(partId);
         
         // Get lesson statuses for progress tracking
         Set<Long> doneLessons = profileLessonStatusRepo.findAllByIdProfileId(profileId).stream()
@@ -453,6 +463,7 @@ public class ContentService {
         
         boolean unlockedGiven = false;
         List<LessonListItemDTO> lessonDTOs = new ArrayList<>();
+        int lessonPosition = 0;
         
         for (Lesson l : lessons) {
             LessonStatus status;
@@ -470,7 +481,7 @@ public class ContentService {
                     l.getTitle(), 
                     l.getHint(), 
                     l.getLessonType(), 
-                    l.getPosition(), 
+                    lessonPosition++, 
                     status
             ));
         }
@@ -504,18 +515,105 @@ public class ContentService {
             throw new PremiumRequiredException();
         }
 
-        var screens = screenRepo.findByLessonIdOrderByPositionAsc(lessonId).stream()
+        List<LessonScreen> orderedScreens = orderService.getOrderedScreensForLesson(lessonId);
+        AtomicInteger screenPosition = new AtomicInteger(0);
+        var screens = orderedScreens.stream()
                 .map(sc -> new ScreenDTO(
                         sc.getId(),
                         sc.getScreenType(),
                         parseAndResolve(sc.getPayload()),
-                        sc.getPosition()
+                        screenPosition.getAndIncrement()
                 ))
                 .toList();
 
+        int lessonPosition = orderService.getLessonIndexInPart(lessonId);
         return new LessonPlayDTO(
-                l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), l.getPosition(), screens
+                l.getId(), l.getTitle(), l.getHint(), l.getLessonType(), lessonPosition, screens
         );
+    }
+
+    // ============== ASSET PREFETCH ==============
+
+    /**
+     * Get all asset URLs for a part (for prefetching).
+     * Extracts image and audio URLs from all lesson screens in the part.
+     */
+    public PartAssetsResponse getPartAssets(Long partId) {
+        Part part = partRepo.findById(partId)
+                .orElseThrow(() -> new EntityNotFoundException("Part not found"));
+        
+        List<Lesson> lessons = orderService.getOrderedLessonsForPart(partId);
+        Set<PartAssetsResponse.AssetInfo> assets = new HashSet<>();
+        
+        for (Lesson lesson : lessons) {
+            var screens = orderService.getOrderedScreensForLesson(lesson.getId());
+            for (var screen : screens) {
+                extractAssetsFromPayload(screen.getPayload(), assets);
+            }
+        }
+        
+        List<PartAssetsResponse.AssetInfo> assetList = new ArrayList<>(assets);
+        return new PartAssetsResponse(assetList, assetList.size());
+    }
+
+    /**
+     * Get all asset URLs for a part (for kid prefetching with premium check).
+     */
+    public PartAssetsResponse getPartAssetsForKid(Long partId, boolean isPremium) {
+        Part part = partRepo.findById(partId)
+                .orElseThrow(() -> new EntityNotFoundException("Part not found"));
+        
+        Module m = part.getSubmodule().getModule();
+        if (m.isPremium() && !isPremium) {
+            throw new PremiumRequiredException();
+        }
+        
+        return getPartAssets(partId);
+    }
+
+    /**
+     * Extract S3 asset URLs from a lesson screen payload JSON.
+     */
+    private void extractAssetsFromPayload(String payloadJson, Set<PartAssetsResponse.AssetInfo> assets) {
+        try {
+            JsonNode root = om.readTree(payloadJson);
+            extractS3Keys(root, assets);
+        } catch (Exception e) {
+            // Ignore parse errors
+        }
+    }
+
+    /**
+     * Recursively extract S3 keys from JSON and generate presigned URLs.
+     */
+    private void extractS3Keys(JsonNode node, Set<PartAssetsResponse.AssetInfo> assets) {
+        if (node == null || node.isNull()) return;
+        
+        if (node.isObject()) {
+            node.fields().forEachRemaining(entry -> {
+                String key = entry.getKey();
+                JsonNode value = entry.getValue();
+                
+                // Check for S3 key fields (s3Key, s3AudioKey, s3ImageKey, etc.)
+                boolean isS3KeyField = (key.startsWith("s3") || key.contains("Key")) && value.isTextual();
+                
+                if (isS3KeyField) {
+                    String s3Key = value.asText();
+                    if (s3Service.isS3Key(s3Key)) {
+                        String url = s3Service.generatePresignedUrl(s3Key);
+                        String type = key.toLowerCase().contains("audio") ? "AUDIO" : "IMAGE";
+                        assets.add(new PartAssetsResponse.AssetInfo(url, type, s3Key));
+                    }
+                } else {
+                    // Recurse into nested objects
+                    extractS3Keys(value, assets);
+                }
+            });
+        } else if (node.isArray()) {
+            for (JsonNode item : node) {
+                extractS3Keys(item, assets);
+            }
+        }
     }
 
 }

@@ -9,4 +9,6 @@ public interface SubmoduleRepo extends JpaRepository<Submodule, Long> {
     List<Submodule> findAllByModule_IdOrderByPositionAsc(Long moduleId);
     
     List<Submodule> findByModuleId(Long moduleId);
+    
+    List<Submodule> findAllByModule_IdAndIsActiveTrue(Long moduleId);
 }

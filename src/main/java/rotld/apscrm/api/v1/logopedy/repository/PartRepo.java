@@ -24,4 +24,9 @@ public interface PartRepo extends JpaRepository<Part, Long> {
      * Count active parts in a submodule
      */
     long countBySubmoduleIdAndIsActiveTrue(Long submoduleId);
+    
+    /**
+     * Find all active parts for a submodule (without ordering)
+     */
+    List<Part> findBySubmoduleIdAndIsActiveTrue(Long submoduleId);
 }

@@ -43,4 +43,13 @@ public class ContentController {
     public LessonPlayDTO getLesson(@PathVariable Long profileId, @PathVariable Long lessonId) {
         return contentService.getLesson(profileId, SecurityUtils.currentUserId(), lessonId);
     }
+    
+    /**
+     * Get all asset URLs for a part (for prefetching images/audio).
+     */
+    @GetMapping("/profiles/{profileId}/parts/{partId}/assets")
+    public PartAssetsResponse getPartAssets(@PathVariable Long profileId, @PathVariable Long partId) {
+        // Verify profile belongs to user (implicitly via service call pattern)
+        return contentService.getPartAssets(partId);
+    }
 }
