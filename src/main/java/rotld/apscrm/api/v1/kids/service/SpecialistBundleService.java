@@ -27,6 +27,7 @@ public class SpecialistBundleService {
     private final UserRepository userRepo;
     private final ProfileRepo profileRepo;
     private final ProfileLessonStatusRepo plsRepo;
+    private final ProfileProgressRepo progressRepo;
     private final HomeworkAssignmentRepo homeworkRepo;
 
     /**
@@ -146,25 +147,37 @@ public class SpecialistBundleService {
             throw new IllegalArgumentException("User does not have a bundle to revoke");
         }
 
-        // Delete all keys and their associated profiles
+        SpecialistBundle bundle = bundleRepo.findBySpecialistId(specialistId)
+                .orElseThrow(() -> new EntityNotFoundException("Bundle not found for specialist"));
+
+        // Delete all keys and their associated profile data.
+        // Important: unlink key -> profile before deleting the profile to avoid FK issues / flush problems.
         List<LicenseKey> keys = keyRepo.findBySpecialistIdOrderByCreatedAtDesc(specialistId);
         for (LicenseKey key : keys) {
-            if (key.getProfile() != null) {
-                Long profileId = key.getProfile().getId();
-                // Delete profile progress
-                plsRepo.deleteAllByProfileId(profileId);
-                // Delete homework assignments
-                homeworkRepo.deleteByProfileId(profileId);
-                // Delete profile
-                profileRepo.deleteById(profileId);
+            if (key.getProfile() == null) {
+                continue;
             }
-        }
-        
-        // Delete all keys
-        keyRepo.deleteBySpecialistId(specialistId);
 
-        // Delete bundle record
-        bundleRepo.deleteBySpecialistId(specialistId);
+            Long profileId = key.getProfile().getId();
+
+            // Delete profile-related data
+            plsRepo.deleteAllByProfileId(profileId);
+            progressRepo.deleteAllByProfileId(profileId);
+            homeworkRepo.deleteByProfileId(profileId);
+
+            // Unlink key from profile (so profile can be safely deleted)
+            key.setProfile(null);
+            key.setActivatedAt(null);
+            keyRepo.save(key);
+            keyRepo.flush();
+
+            // Delete profile itself
+            profileRepo.deleteById(profileId);
+        }
+
+        // Delete keys + bundle record (use entity deletes to keep persistence context consistent)
+        keyRepo.deleteAll(keys);
+        bundleRepo.delete(bundle);
 
         // Demote role: SPECIALIST_BUNDLE → SPECIALIST
         specialist.setUserRole(UserRole.SPECIALIST);
